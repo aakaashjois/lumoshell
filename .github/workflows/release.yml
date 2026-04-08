@@ -37,14 +37,22 @@ jobs:
             echo "Missing formula file: $FORMULA" >&2
             exit 1
           fi
-          if ! rg -n '^\s*url\s+"[^"]+"' "$FORMULA" >/dev/null; then
-            echo "Expected stable formula url line not found in $FORMULA" >&2
-            exit 1
-          fi
-          if ! rg -n '^\s*sha256\s+"[0-9a-f]{64}"' "$FORMULA" >/dev/null; then
-            echo "Expected sha256 line not found in $FORMULA" >&2
-            exit 1
-          fi
+          python3 - <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          formula_path = pathlib.Path("Formula/lumoshell.rb")
+          content = formula_path.read_text()
+
+          if not re.search(r'^\s*url\s+"[^"]+"', content, flags=re.M):
+            print(f"Expected stable formula url line not found in {formula_path}", file=sys.stderr)
+            raise SystemExit(1)
+
+          if not re.search(r'^\s*sha256\s+"[0-9a-f]{64}"', content, flags=re.M):
+            print(f"Expected sha256 line not found in {formula_path}", file=sys.stderr)
+            raise SystemExit(1)
+          PY
 
       - name: Build universal appearance sync agent
         run: |
