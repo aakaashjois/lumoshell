@@ -71,12 +71,26 @@ jobs:
 
       - name: Package universal macOS artifact
         run: |
+          export RELEASE_VERSION="${RELEASE_TAG#v}"
           mkdir -p dist/universal
           cp src/appearance-sync-agent/.build/release/lumoshell-appearance-sync-agent dist/universal/
           cp bin/lumoshell dist/universal/
           cp bin/lumoshell-apply dist/universal/
           cp bin/lumoshell-install dist/universal/
           cp bin/lumoshell-uninstall dist/universal/
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          release_version = os.environ["RELEASE_VERSION"]
+          launcher_path = Path("dist/universal/lumoshell")
+          content = launcher_path.read_text()
+
+          if "__LUMOSHELL_VERSION__" not in content:
+            raise SystemExit("Expected version placeholder not found in dist/universal/lumoshell")
+
+          launcher_path.write_text(content.replace("__LUMOSHELL_VERSION__", release_version))
+          PY
           chmod +x dist/universal/lumoshell* dist/universal/lumoshell-appearance-sync-agent
           tar -czf dist/lumoshell-darwin-universal.tar.gz -C dist/universal .
 
