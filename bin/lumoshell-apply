@@ -4,6 +4,7 @@ set -euo pipefail
 
 LIGHT_PROFILE_DEFAULT="Basic"
 DARK_PROFILE_DEFAULT="Pro"
+PROFILE_STORE_DOMAIN="com.user.lumoshell"
 QUIET=0
 DRY_RUN=0
 NEW_SESSION=0
@@ -89,10 +90,18 @@ current_mode() {
 
 profile_for_mode() {
   local mode="$1"
+  local stored_key stored_profile
   if [[ "$mode" == "dark" ]]; then
-    echo "${MAC_TERMINAL_DARK_PROFILE:-$DARK_PROFILE_DEFAULT}"
+    stored_key="DarkProfile"
   else
-    echo "${MAC_TERMINAL_LIGHT_PROFILE:-$LIGHT_PROFILE_DEFAULT}"
+    stored_key="LightProfile"
+  fi
+  stored_profile="$(defaults read "$PROFILE_STORE_DOMAIN" "$stored_key" 2>/dev/null || true)"
+
+  if [[ "$mode" == "dark" ]]; then
+    echo "${LUMOSHELL_PROFILE_DARK:-${stored_profile:-$DARK_PROFILE_DEFAULT}}"
+  else
+    echo "${LUMOSHELL_PROFILE_LIGHT:-${stored_profile:-$LIGHT_PROFILE_DEFAULT}}"
   fi
 }
 

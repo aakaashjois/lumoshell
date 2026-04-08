@@ -12,11 +12,97 @@ Usage:
 
 Commands:
   apply [--reason REASON] [--new-session] [--dry-run] [--quiet]
+  profile set <light|dark> <profile-name>
+  profile show
+  profile reset <light|dark|all>
   install
   uninstall
   doctor
   version
 EOF
+}
+
+profile_usage() {
+  cat <<'EOF'
+Usage:
+  lumoshell profile set <light|dark> <profile-name>
+  lumoshell profile show
+  lumoshell profile reset <light|dark|all>
+EOF
+}
+
+profile_store_domain="com.user.lumoshell"
+profile_key_for_mode() {
+  case "$1" in
+    light) echo "LightProfile" ;;
+    dark) echo "DarkProfile" ;;
+    *)
+      echo "Invalid mode: $1 (expected: light or dark)" >&2
+      exit 1
+      ;;
+  esac
+}
+
+profile_set() {
+  local mode="${1:-}"
+  local profile_name="${2:-}"
+  if [[ -z "$mode" || -z "$profile_name" ]]; then
+    profile_usage
+    exit 1
+  fi
+
+  local key
+  key="$(profile_key_for_mode "$mode")"
+  defaults write "$profile_store_domain" "$key" -string "$profile_name"
+  echo "Set $mode profile to \"$profile_name\"."
+  echo "Applying updated profile configuration..."
+  exec "$SCRIPT_DIR/lumoshell-apply" --reason profile-set
+}
+
+profile_show() {
+  local light_value dark_value
+  light_value="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null || true)"
+  dark_value="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null || true)"
+
+  if [[ -n "$light_value" ]]; then
+    echo "light: $light_value"
+  else
+    echo "light: (not set, defaults to Basic unless LUMOSHELL_PROFILE_LIGHT is set)"
+  fi
+
+  if [[ -n "$dark_value" ]]; then
+    echo "dark: $dark_value"
+  else
+    echo "dark: (not set, defaults to Pro unless LUMOSHELL_PROFILE_DARK is set)"
+  fi
+}
+
+profile_reset() {
+  local target="${1:-}"
+  if [[ -z "$target" ]]; then
+    profile_usage
+    exit 1
+  fi
+
+  case "$target" in
+    light|dark)
+      local key
+      key="$(profile_key_for_mode "$target")"
+      defaults delete "$profile_store_domain" "$key" >/dev/null 2>&1 || true
+      echo "Reset $target profile override."
+      ;;
+    all)
+      defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
+      echo "Reset all profile overrides."
+      ;;
+    *)
+      echo "Invalid reset target: $target (expected: light, dark, or all)" >&2
+      exit 1
+      ;;
+  esac
+
+  echo "Applying updated profile configuration..."
+  exec "$SCRIPT_DIR/lumoshell-apply" --reason profile-reset
 }
 
 cmd="${1:-}"
@@ -29,6 +115,30 @@ shift
 case "$cmd" in
   apply)
     exec "$SCRIPT_DIR/lumoshell-apply" "$@"
+    ;;
+  profile)
+    subcmd="${1:-}"
+    if [[ -z "$subcmd" ]]; then
+      profile_usage
+      exit 1
+    fi
+    shift
+    case "$subcmd" in
+      set)
+        profile_set "${1:-}" "${2:-}"
+        ;;
+      show)
+        profile_show
+        ;;
+      reset)
+        profile_reset "${1:-}"
+        ;;
+      *)
+        echo "Unknown profile command: $subcmd" >&2
+        profile_usage
+        exit 1
+        ;;
+    esac
     ;;
   install)
     exec "$SCRIPT_DIR/lumoshell-install" "$@"

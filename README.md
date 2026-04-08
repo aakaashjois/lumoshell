@@ -6,7 +6,10 @@
 
 - Light mode profile default: `Basic`
 - Dark mode profile default: `Pro`
-- Optional overrides: `MAC_TERMINAL_LIGHT_PROFILE`, `MAC_TERMINAL_DARK_PROFILE`
+- Configure profiles with:
+  - `lumoshell profile set light "<name>"`
+  - `lumoshell profile set dark "<name>"`
+- Optional env overrides: `LUMOSHELL_PROFILE_LIGHT`, `LUMOSHELL_PROFILE_DARK`
 
 ## Requirements
 
@@ -77,6 +80,9 @@ lumoshell <command> [options]
 Commands:
 
 - `lumoshell apply [--reason REASON] [--new-session] [--dry-run] [--quiet]`
+- `lumoshell profile set <light|dark> "<profile-name>"`
+- `lumoshell profile show`
+- `lumoshell profile reset <light|dark|all>`
 - `lumoshell install`
 - `lumoshell uninstall`
 - `lumoshell doctor`
@@ -106,9 +112,7 @@ If Homebrew does not resolve the short formula name in your environment, use:
 brew install aakaashjois/lumoshell/lumoshell
 ```
 
-`brew install lumoshell` runs `lumoshell install` in `post_install` and attempts to enroll/start the user LaunchAgent automatically.
-
-If startup enrollment fails due to user-session context, run:
+After Homebrew install, enroll startup behavior manually:
 
 ```sh
 lumoshell install
@@ -170,12 +174,28 @@ rm -f /usr/local/bin/lumoshell-appearance-sync-agent
 
 ## Configuration
 
-Environment variables:
+Set profiles with commands (recommended):
 
-- `MAC_TERMINAL_LIGHT_PROFILE` (default `Basic`)
-- `MAC_TERMINAL_DARK_PROFILE` (default `Pro`)
+```sh
+lumoshell profile set light "Basic"
+lumoshell profile set dark "Pro"
+```
 
-Set them in your shell config (for example `~/.zprofile`). Values are picked up automatically on the next appearance change or new shell session.
+Inspect/reset saved profile configuration:
+
+```sh
+lumoshell profile show
+lumoshell profile reset light
+lumoshell profile reset dark
+lumoshell profile reset all
+```
+
+Environment variable overrides (optional):
+
+- `LUMOSHELL_PROFILE_LIGHT` (default `Basic`)
+- `LUMOSHELL_PROFILE_DARK` (default `Pro`)
+
+Set env vars in your shell config (for example `~/.zprofile`) if you need temporary or machine-specific overrides. Env vars take precedence over saved command-based profile settings.
 
 ## Permissions and Behavior
 
@@ -241,8 +261,8 @@ See `CONTRIBUTING.md` for full contributor guidance.
   - `lumoshell doctor`
 - Validate LaunchAgent plist:
   - `plutil -lint launchd/com.user.lumoshell-appearance-sync-agent.plist`
-- If launch enrollment did not happen during Homebrew install:
-  - run `lumoshell install` manually
+- After Homebrew install, enroll startup behavior:
+  - run `lumoshell install`
 
 ## License
 
