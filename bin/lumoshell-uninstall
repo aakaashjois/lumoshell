@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LABEL="com.user.lumoshell-appearance-sync-agent"
+LAUNCH_AGENT_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
+HOOK_FILE="${HOME}/.zprofile"
+HOOK_START="# >>> lumoshell managed block >>>"
+HOOK_END="# <<< lumoshell managed block <<<"
+
+remove_managed_block() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+
+  local start_count end_count
+  start_count="$(awk -v start="$HOOK_START" '$0 == start { count++ } END { print count + 0 }' "$file")"
+  end_count="$(awk -v end="$HOOK_END" '$0 == end { count++ } END { print count + 0 }' "$file")"
+
+  if [[ "$start_count" -eq 0 && "$end_count" -eq 0 ]]; then
+    return 0
+  fi
+
+  local backup_file="${file}.bak"
+  cp "$file" "$backup_file"
+
+  if [[ "$start_count" -ne 1 || "$end_count" -ne 1 ]]; then
+    echo "lumoshell-uninstall: found malformed managed block markers in $file." >&2
+    echo "lumoshell-uninstall: left file unchanged and wrote backup to $backup_file." >&2
+    return 1
+  fi
+
+  local tmp_hook
+  tmp_hook="$(mktemp "${TMPDIR:-/tmp}/lumoshell-hook.XXXXXX")"
+  awk -v start="$HOOK_START" -v end="$HOOK_END" '
+    BEGIN { inside=0; saw_start=0; saw_end=0; err=0 }
+    $0 == start {
+      if (inside || saw_start) { err=1; next }
+      inside=1
+      saw_start=1
+      next
+    }
+    $0 == end {
+      if (!inside || saw_end) { err=1; next }
+      inside=0
+      saw_end=1
+      next
+    }
+    !inside { print }
+    END {
+      if (inside || !saw_start || !saw_end || err) {
+        exit 1
+      }
+    }
+  ' "$file" > "$tmp_hook" || {
+    rm -f "$tmp_hook"
+    echo "lumoshell-uninstall: failed to safely rewrite $file; restoring from backup." >&2
+    cp "$backup_file" "$file"
+    return 1
+  }
+
+  local file_mode
+  file_mode="$(stat -f '%Lp' "$file" 2>/dev/null || true)"
+  if [[ -n "$file_mode" ]]; then
+    chmod "$file_mode" "$tmp_hook" || true
+  fi
+
+  mv "$tmp_hook" "$file"
+}
+
+launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+
+rm -f "$LAUNCH_AGENT_PATH"
+
+remove_managed_block "$HOOK_FILE"
+
+echo "lumoshell uninstalled."

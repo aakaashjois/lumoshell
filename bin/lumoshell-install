@@ -1,0 +1,252 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LABEL="com.user.lumoshell-appearance-sync-agent"
+LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
+LAUNCH_AGENT_PATH="${LAUNCH_AGENTS_DIR}/${LABEL}.plist"
+LOG_DIR="${HOME}/Library/Logs/lumoshell"
+LOG_PATH="${LOG_DIR}/appearance-sync-agent.log"
+HOOK_FILE="${HOME}/.zprofile"
+HOOK_START="# >>> lumoshell managed block >>>"
+HOOK_END="# <<< lumoshell managed block <<<"
+
+resolve_realpath() {
+  local path="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$path"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$path"
+    return
+  fi
+
+  (
+    cd -- "$(dirname -- "$path")"
+    printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$path")"
+  )
+}
+
+xml_escape() {
+  printf '%s' "$1" | sed \
+    -e 's/&/\&amp;/g' \
+    -e 's/</\&lt;/g' \
+    -e 's/>/\&gt;/g' \
+    -e 's/"/\&quot;/g' \
+    -e "s/'/\&apos;/g"
+}
+
+shell_double_quote_escape() {
+  printf '%s' "$1" | sed \
+    -e 's/\\/\\\\/g' \
+    -e 's/"/\\"/g' \
+    -e 's/\$/\\$/g' \
+    -e 's/`/\\`/g'
+}
+
+is_world_writable() {
+  local path="$1"
+  local perms
+  perms="$(stat -f '%Sp' "$path" 2>/dev/null || true)"
+  [[ -n "$perms" && "${perms:8:1}" == "w" ]]
+}
+
+is_trusted_owner() {
+  local path="$1"
+  local owner current_user
+  owner="$(stat -f '%Su' "$path" 2>/dev/null || true)"
+  current_user="$(id -un)"
+  [[ "$owner" == "$current_user" || "$owner" == "root" ]]
+}
+
+validate_path_resolved_command() {
+  local path="$1"
+  local cmd_name="$2"
+  local parent_dir
+  parent_dir="$(dirname "$path")"
+
+  if ! is_trusted_owner "$path" || ! is_trusted_owner "$parent_dir"; then
+    echo "lumoshell-install: rejected '$cmd_name' at '$path' (untrusted owner)." >&2
+    return 1
+  fi
+
+  if is_world_writable "$path" || is_world_writable "$parent_dir"; then
+    echo "lumoshell-install: rejected '$cmd_name' at '$path' (world-writable path)." >&2
+    return 1
+  fi
+
+  return 0
+}
+
+resolve_helper_cmd() {
+  local cmd_name="$1"
+  local script_dir candidate resolved
+
+  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+  candidate="${script_dir}/${cmd_name}"
+  if [[ -x "$candidate" ]]; then
+    resolved="$(resolve_realpath "$candidate")"
+    printf '%s\n' "$resolved"
+    return
+  fi
+
+  if [[ "$cmd_name" == "lumoshell-appearance-sync-agent" ]]; then
+    candidate="${script_dir}/../src/appearance-sync-agent/.build/release/lumoshell-appearance-sync-agent"
+    if [[ -x "$candidate" ]]; then
+      resolved="$(resolve_realpath "$candidate")"
+      printf '%s\n' "$resolved"
+      return
+    fi
+  fi
+
+  if [[ "${LUMOSHELL_ALLOW_PATH_LOOKUP:-0}" != "1" ]]; then
+    return 1
+  fi
+
+  candidate="$(command -v "$cmd_name" || true)"
+  if [[ -z "$candidate" ]]; then
+    return 1
+  fi
+
+  resolved="$(resolve_realpath "$candidate")"
+  if [[ "$resolved" != /* ]]; then
+    return 1
+  fi
+
+  if ! validate_path_resolved_command "$resolved" "$cmd_name"; then
+    return 1
+  fi
+
+  printf '%s\n' "$resolved"
+}
+
+require_resolved_command() {
+  local command_path="$1"
+  local command_name="$2"
+  [[ -n "$command_path" ]] && return 0
+
+  echo "lumoshell-install: could not resolve trusted '$command_name' path." >&2
+  echo "lumoshell-install: place helpers next to this script, or set LUMOSHELL_ALLOW_PATH_LOOKUP=1." >&2
+  exit 1
+}
+
+remove_managed_block() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+
+  local start_count end_count
+  start_count="$(awk -v start="$HOOK_START" '$0 == start { count++ } END { print count + 0 }' "$file")"
+  end_count="$(awk -v end="$HOOK_END" '$0 == end { count++ } END { print count + 0 }' "$file")"
+
+  if [[ "$start_count" -eq 0 && "$end_count" -eq 0 ]]; then
+    return 0
+  fi
+
+  local backup_file="${file}.bak"
+  cp "$file" "$backup_file"
+
+  if [[ "$start_count" -ne 1 || "$end_count" -ne 1 ]]; then
+    echo "lumoshell-install: found malformed managed block markers in $file." >&2
+    echo "lumoshell-install: left file unchanged and wrote backup to $backup_file." >&2
+    return 1
+  fi
+
+  local tmp_hook
+  tmp_hook="$(mktemp "${TMPDIR:-/tmp}/lumoshell-hook.XXXXXX")"
+  awk -v start="$HOOK_START" -v end="$HOOK_END" '
+    BEGIN { inside=0; saw_start=0; saw_end=0; err=0 }
+    $0 == start {
+      if (inside || saw_start) { err=1; next }
+      inside=1
+      saw_start=1
+      next
+    }
+    $0 == end {
+      if (!inside || saw_end) { err=1; next }
+      inside=0
+      saw_end=1
+      next
+    }
+    !inside { print }
+    END {
+      if (inside || !saw_start || !saw_end || err) {
+        exit 1
+      }
+    }
+  ' "$file" > "$tmp_hook" || {
+    rm -f "$tmp_hook"
+    echo "lumoshell-install: failed to safely rewrite $file; restoring from backup." >&2
+    cp "$backup_file" "$file"
+    return 1
+  }
+
+  local file_mode
+  file_mode="$(stat -f '%Lp' "$file" 2>/dev/null || true)"
+  if [[ -n "$file_mode" ]]; then
+    chmod "$file_mode" "$tmp_hook" || true
+  fi
+
+  mv "$tmp_hook" "$file"
+}
+
+APPLY_CMD="$(resolve_helper_cmd lumoshell-apply || true)"
+AGENT_CMD="$(resolve_helper_cmd lumoshell-appearance-sync-agent || true)"
+
+require_resolved_command "$APPLY_CMD" "lumoshell-apply"
+require_resolved_command "$AGENT_CMD" "lumoshell-appearance-sync-agent"
+
+mkdir -p "$LAUNCH_AGENTS_DIR"
+mkdir -p "$LOG_DIR"
+
+LOG_PATH_XML="$(xml_escape "$LOG_PATH")"
+APPLY_CMD_HOOK_ESCAPED="$(shell_double_quote_escape "$APPLY_CMD")"
+AGENT_CMD_XML="$(xml_escape "$AGENT_CMD")"
+APPLY_CMD_XML="$(xml_escape "$APPLY_CMD")"
+
+cat > "$LAUNCH_AGENT_PATH" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$AGENT_CMD_XML</string>
+    <string>--apply-cmd</string>
+    <string>$APPLY_CMD_XML</string>
+    <string>--quiet</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>$LOG_PATH_XML</string>
+  <key>StandardErrorPath</key>
+  <string>$LOG_PATH_XML</string>
+</dict>
+</plist>
+EOF
+
+plutil -lint "$LAUNCH_AGENT_PATH" >/dev/null
+
+remove_managed_block "$HOOK_FILE"
+
+cat >> "$HOOK_FILE" <<EOF
+$HOOK_START
+if [[ -x "$APPLY_CMD_HOOK_ESCAPED" ]]; then
+  "$APPLY_CMD_HOOK_ESCAPED" --new-session --reason shell-session --quiet >/dev/null 2>&1 || true
+fi
+$HOOK_END
+EOF
+
+launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
+launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_PATH"
+launchctl kickstart -k "gui/$(id -u)/$LABEL"
+"$APPLY_CMD" --reason install --quiet >/dev/null 2>&1 || true
+
+echo "lumoshell installed."
+echo "If prompted, grant Automation permission for Terminal control."

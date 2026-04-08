@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+LIGHT_PROFILE_DEFAULT="Basic"
+DARK_PROFILE_DEFAULT="Pro"
+QUIET=0
+DRY_RUN=0
+NEW_SESSION=0
+REASON="manual"
+
+log() {
+  if [[ "$QUIET" -eq 0 ]]; then
+    echo "$@"
+  fi
+}
+
+warn() {
+  echo "lumoshell warning: $*" >&2
+}
+
+usage() {
+  cat <<'EOF'
+Usage: lumoshell-apply [options]
+
+Options:
+  --reason <value>  Reason label for logs (default: manual)
+  --new-session     Session-hook mode; avoid full open-window sweep
+  --dry-run         Print intended actions only
+  --quiet           Reduce non-error output
+EOF
+}
+
+sanitize_reason() {
+  local input="$1"
+  local sanitized
+  sanitized="$(printf '%s' "$input" | tr -d '\r\n' | LC_ALL=C tr -cd '\40-\176')"
+  if [[ -z "$sanitized" ]]; then
+    sanitized="manual"
+  fi
+  printf '%s\n' "$sanitized"
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --reason)
+      REASON="${2:-}"
+      if [[ -z "$REASON" ]]; then
+        echo "--reason requires a value" >&2
+        exit 1
+      fi
+      shift 2
+      ;;
+    --new-session)
+      NEW_SESSION=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --quiet)
+      QUIET=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
+REASON="$(sanitize_reason "$REASON")"
+
+current_mode() {
+  local style
+  style="$(defaults read -g AppleInterfaceStyle 2>/dev/null || true)"
+  if [[ "$style" == "Dark" ]]; then
+    echo "dark"
+  else
+    echo "light"
+  fi
+}
+
+profile_for_mode() {
+  local mode="$1"
+  if [[ "$mode" == "dark" ]]; then
+    echo "${MAC_TERMINAL_DARK_PROFILE:-$DARK_PROFILE_DEFAULT}"
+  else
+    echo "${MAC_TERMINAL_LIGHT_PROFILE:-$LIGHT_PROFILE_DEFAULT}"
+  fi
+}
+
+terminal_is_running() {
+  local running
+  running="$(osascript -e 'tell application "System Events" to (name of processes) contains "Terminal"' 2>/dev/null || true)"
+  [[ "$running" == "true" ]]
+}
+
+apply_defaults() {
+  local profile="$1"
+  defaults write com.apple.Terminal "Default Window Settings" -string "$profile"
+  defaults write com.apple.Terminal "Startup Window Settings" -string "$profile"
+}
+
+escape_applescript_string() {
+  local input="$1"
+  printf '%s' "$input" | sed 's/\\/\\\\/g; s/"/\\"/g'
+}
+
+apply_open_tabs_and_defaults_via_applescript() {
+  local profile="$1"
+  local profile_escaped
+  profile_escaped="$(escape_applescript_string "$profile")"
+  osascript <<EOF
+set targetProfile to "$profile_escaped"
+tell application "Terminal"
+  if (count of windows) > 0 then
+    set current settings of tabs of windows to settings set targetProfile
+  end if
+  set default settings to settings set targetProfile
+  set startup settings to settings set targetProfile
+end tell
+EOF
+}
+
+apply_new_session_active_tab_via_applescript() {
+  local profile="$1"
+  local profile_escaped
+  profile_escaped="$(escape_applescript_string "$profile")"
+  osascript <<EOF
+set targetProfile to "$profile_escaped"
+tell application "Terminal"
+  if (count of windows) > 0 then
+    try
+      set current settings of selected tab of front window to settings set targetProfile
+    end try
+  end if
+  set default settings to settings set targetProfile
+  set startup settings to settings set targetProfile
+end tell
+EOF
+}
+
+MODE="$(current_mode)"
+PROFILE="$(profile_for_mode "$MODE")"
+
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "mode=$MODE"
+  echo "profile=$PROFILE"
+  echo "reason=$REASON"
+  if [[ "$NEW_SESSION" -eq 1 ]]; then
+    echo "action=defaults+active-tab-best-effort"
+  else
+    echo "action=defaults+all-open-tabs-best-effort"
+  fi
+  exit 0
+fi
+
+log "lumoshell-apply: reason=$REASON mode=$MODE profile=$PROFILE"
+
+apply_defaults "$PROFILE"
+
+if terminal_is_running; then
+  if [[ "$NEW_SESSION" -eq 1 ]]; then
+    if ! apply_new_session_active_tab_via_applescript "$PROFILE" >/dev/null 2>&1; then
+      warn "Automation permission not available; applied defaults only for new session."
+    fi
+  else
+    if ! apply_open_tabs_and_defaults_via_applescript "$PROFILE" >/dev/null 2>&1; then
+      warn "Automation permission not available; skipped open-tab update and kept defaults-only mode."
+    fi
+  fi
+fi
+
+exit 0
