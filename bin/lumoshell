@@ -3,7 +3,33 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VERSION="0.1.0"
+VERSION_PLACEHOLDER="__LUMOSHELL_VERSION__"
+
+resolve_version() {
+  # Release workflow injects the tag version into VERSION_PLACEHOLDER.
+  if [[ "$VERSION_PLACEHOLDER" != "__LUMOSHELL_VERSION__" ]]; then
+    echo "$VERSION_PLACEHOLDER"
+    return
+  fi
+
+  # In development checkouts, prefer the latest git tag if available.
+  if command -v git >/dev/null 2>&1; then
+    local repo_root
+    repo_root="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
+    if [[ -n "$repo_root" ]]; then
+      local tag
+      tag="$(git -C "$repo_root" describe --tags --abbrev=0 2>/dev/null || true)"
+      if [[ -n "$tag" ]]; then
+        echo "${tag#v}"
+        return
+      fi
+    fi
+  fi
+
+  echo "dev"
+}
+
+VERSION="$(resolve_version)"
 
 usage() {
   cat <<'EOF'
