@@ -13,9 +13,27 @@ jobs:
     runs-on: macos-latest
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Guard formula structure for release automation
+        run: |
+          set -euo pipefail
+          FORMULA="Formula/lumoshell.rb"
+          if [[ ! -f "$FORMULA" ]]; then
+            echo "Missing formula file: $FORMULA" >&2
+            exit 1
+          fi
+          if ! rg -n '^\s*url\s+"[^"]+"' "$FORMULA" >/dev/null; then
+            echo "Expected stable formula url line not found in $FORMULA" >&2
+            exit 1
+          fi
+          if ! rg -n '^\s*sha256\s+"[0-9a-f]{64}"' "$FORMULA" >/dev/null; then
+            echo "Expected sha256 line not found in $FORMULA" >&2
+            exit 1
+          fi
 
       - name: Build universal appearance sync agent
         run: |
@@ -53,3 +71,54 @@ jobs:
           files: |
             dist/lumoshell-darwin-universal.tar.gz
             dist/SHA256SUMS.txt
+
+      - name: Prepare Homebrew formula update
+        id: formula_update
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          export SHA256
+          SHA256="$(awk '{print $1}' dist/SHA256SUMS.txt)"
+          git fetch origin main
+          git checkout -B main origin/main
+
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          import os
+
+          version = os.environ["VERSION"]
+          sha256 = os.environ["SHA256"]
+          url = f"https://github.com/aakaashjois/lumoshell/releases/download/{version}/lumoshell-darwin-universal.tar.gz"
+          formula_path = Path("Formula/lumoshell.rb")
+          content = formula_path.read_text()
+
+          content = re.sub(r'^\s*url\s+"[^"]+"$', f'  url "{url}"', content, flags=re.M)
+          content = re.sub(r'^\s*sha256\s+"[^"]+"$', f'  sha256 "{sha256}"', content, flags=re.M)
+
+          formula_path.write_text(content)
+          PY
+
+          if git diff --quiet -- Formula/lumoshell.rb; then
+            echo "Formula already up to date for ${VERSION}; no commit needed."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Open PR for formula update
+        if: steps.formula_update.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@51c40a57f8b9e077e09f5598d5f15e912f3f7f0e
+        with:
+          base: main
+          branch: automation/formula-${{ github.ref_name }}
+          title: Update Homebrew formula for ${{ github.ref_name }}
+          commit-message: Update Homebrew formula for ${{ github.ref_name }}
+          body: |
+            Automated formula update after release `${{ github.ref_name }}`.
+
+            - Updates `Formula/lumoshell.rb` `url` to this release asset
+            - Updates `sha256` from generated `SHA256SUMS.txt`

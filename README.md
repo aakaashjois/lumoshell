@@ -93,11 +93,17 @@ Helper binaries:
 
 ### Install with Homebrew
 
-When your tap is available:
+Install from the official tap:
 
 ```sh
-brew tap <org>/tap
+brew tap aakaashjois/lumoshell
 brew install lumoshell
+```
+
+If Homebrew does not resolve the short formula name in your environment, use:
+
+```sh
+brew install aakaashjois/lumoshell/lumoshell
 ```
 
 `brew install lumoshell` runs `lumoshell install` in `post_install` and attempts to enroll/start the user LaunchAgent automatically.
