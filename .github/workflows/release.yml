@@ -85,8 +85,9 @@ jobs:
           shasum -a 256 dist/lumoshell-darwin-universal.tar.gz > dist/SHA256SUMS.txt
 
       - name: Upload release assets
-        uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe
+        uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             dist/lumoshell-darwin-universal.tar.gz
             dist/SHA256SUMS.txt
