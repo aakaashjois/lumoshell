@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (for example: v0.1.1)"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -11,12 +17,17 @@ permissions:
 jobs:
   release:
     runs-on: macos-latest
+    env:
+      RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
     permissions:
       contents: write
       pull-requests: write
     steps:
       - name: Checkout
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          fetch-depth: 0
 
       - name: Guard formula structure for release automation
         run: |
@@ -75,7 +86,7 @@ jobs:
       - name: Prepare Homebrew formula update
         id: formula_update
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ env.RELEASE_TAG }}
         run: |
           set -euo pipefail
 
@@ -114,11 +125,11 @@ jobs:
         uses: peter-evans/create-pull-request@51c40a57f8b9e077e09f5598d5f15e912f3f7f0e
         with:
           base: main
-          branch: automation/formula-${{ github.ref_name }}
-          title: Update Homebrew formula for ${{ github.ref_name }}
-          commit-message: Update Homebrew formula for ${{ github.ref_name }}
+          branch: automation/formula-${{ env.RELEASE_TAG }}
+          title: Update Homebrew formula for ${{ env.RELEASE_TAG }}
+          commit-message: Update Homebrew formula for ${{ env.RELEASE_TAG }}
           body: |
-            Automated formula update after release `${{ github.ref_name }}`.
+            Automated formula update after release `${{ env.RELEASE_TAG }}`.
 
             - Updates `Formula/lumoshell.rb` `url` to this release asset
             - Updates `sha256` from generated `SHA256SUMS.txt`
