@@ -1,32 +1,13 @@
 class Lumoshell < Formula
   desc "Auto-sync Apple Terminal profiles with macOS appearance"
   homepage "https://github.com/aakaashjois/lumoshell"
+  url "https://github.com/aakaashjois/lumoshell/releases/download/v0.1.0/lumoshell-darwin-universal.tar.gz"
+  sha256 "3f35e8e915097baaef29722d8f01efb4960ce2b88f1f2cc590d079c194f918f6"
   license "MIT"
 
   head "https://github.com/aakaashjois/lumoshell.git", branch: "main"
 
   def install
-    require "digest"
-
-    asset_name = "lumoshell-darwin-universal.tar.gz"
-    checksums_name = "SHA256SUMS.txt"
-    release_base_url = ENV["LUMOSHELL_RELEASE_BASE_URL"] || "https://github.com/aakaashjois/lumoshell/releases/latest/download"
-    release_base_url = release_base_url.chomp("/")
-
-    system "curl", "-fsSL", "#{release_base_url}/#{asset_name}", "-o", asset_name
-    system "curl", "-fsSL", "#{release_base_url}/#{checksums_name}", "-o", checksums_name
-
-    checksum_line = (buildpath/checksums_name).read.lines.find do |line|
-      line.split.last == asset_name
-    end
-    odie "Could not find checksum for #{asset_name} in #{checksums_name}" if checksum_line.nil?
-
-    expected_sha = checksum_line.split.first
-    actual_sha = Digest::SHA256.file(buildpath/asset_name).hexdigest
-    odie "Checksum mismatch for #{asset_name}" if actual_sha != expected_sha
-
-    system "tar", "-xzf", asset_name
-
     %w[
       lumoshell
       lumoshell-apply
