@@ -1,0 +1,31 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+
+      - name: Run verification script
+        run: bash scripts/verify.sh
+
+      - name: Audit Homebrew formula
+        run: |
+          TAP_NAME="local/lumoshell-ci"
+          if ! brew tap | rg -q "^${TAP_NAME}$"; then
+            brew tap-new "$TAP_NAME"
+          fi
+          TAP_REPO="$(brew --repository "$TAP_NAME")"
+          mkdir -p "$TAP_REPO/Formula"
+          cp Formula/lumoshell.rb "$TAP_REPO/Formula/lumoshell.rb"
+          brew audit --strict "$TAP_NAME/lumoshell"
