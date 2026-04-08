@@ -122,7 +122,7 @@ jobs:
 
       - name: Open PR for formula update
         if: steps.formula_update.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@51c40a57f8b9e077e09f5598d5f15e912f3f7f0e
+        uses: peter-evans/create-pull-request@v8
         with:
           base: main
           branch: automation/formula-${{ env.RELEASE_TAG }}
