@@ -20,17 +20,7 @@ class Lumoshell < Formula
   end
 
   def post_install
-    install_script = opt_bin/"lumoshell-install"
-    unless install_script.exist?
-      opoo "Automatic startup setup skipped because `#{install_script}` was not found."
-      return
-    end
-
-    if quiet_system(install_script.to_s)
-      ohai "Automatic startup enrollment/start completed."
-    else
-      opoo "Automatic startup enrollment/start failed. Run `lumoshell install` manually."
-    end
+    ohai "Run `lumoshell install` manually to enroll startup and grant permissions."
   end
 
   service do
@@ -41,12 +31,12 @@ class Lumoshell < Formula
 
   def caveats
     <<~EOS
-      lumoshell attempted automatic startup setup during install.
+      Run `lumoshell install` after Homebrew installation to enroll startup setup.
 
       Quick verify (recommended):
         lumoshell doctor
 
-      If the appearance sync agent is not running, run:
+      Enroll/start the appearance sync agent:
         lumoshell install
 
       Test a one-time apply immediately:
@@ -55,12 +45,15 @@ class Lumoshell < Formula
       Then change macOS appearance (Light/Dark) to confirm automatic sync.
       If prompted, allow Terminal Automation permissions.
 
-      To override Terminal profile names, set these environment variables:
-        export MAC_TERMINAL_LIGHT_PROFILE="Basic"
-        export MAC_TERMINAL_DARK_PROFILE="Pro"
+      Set profiles from the CLI:
+        lumoshell profile set light "Basic"
+        lumoshell profile set dark "Pro"
 
-      Put them in your shell config (for example: ~/.zprofile), then restart Terminal.
-      Overrides are applied automatically on the next appearance change or new shell session.
+      Optional env overrides:
+        export LUMOSHELL_PROFILE_LIGHT="Basic"
+        export LUMOSHELL_PROFILE_DARK="Pro"
+
+      Env overrides take precedence over saved `lumoshell profile set` values.
     EOS
   end
 
