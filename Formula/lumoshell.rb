@@ -21,7 +21,14 @@ class Lumoshell < Formula
 
   def post_install
     install_script = opt_bin/"lumoshell-install"
-    if install_script.exist? && !quiet_system(install_script.to_s)
+    unless install_script.exist?
+      opoo "Automatic startup setup skipped because `#{install_script}` was not found."
+      return
+    end
+
+    if quiet_system(install_script.to_s)
+      ohai "Automatic startup enrollment/start completed."
+    else
       opoo "Automatic startup enrollment/start failed. Run `lumoshell install` manually."
     end
   end
@@ -34,6 +41,20 @@ class Lumoshell < Formula
 
   def caveats
     <<~EOS
+      lumoshell attempted automatic startup setup during install.
+
+      Quick verify (recommended):
+        lumoshell doctor
+
+      If the appearance sync agent is not running, run:
+        lumoshell install
+
+      Test a one-time apply immediately:
+        lumoshell apply --reason post-install
+
+      Then change macOS appearance (Light/Dark) to confirm automatic sync.
+      If prompted, allow Terminal Automation permissions.
+
       To override Terminal profile names, set these environment variables:
         export MAC_TERMINAL_LIGHT_PROFILE="Basic"
         export MAC_TERMINAL_DARK_PROFILE="Pro"
