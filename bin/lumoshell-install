@@ -238,7 +238,7 @@ remove_managed_block "$HOOK_FILE"
 cat >> "$HOOK_FILE" <<EOF
 $HOOK_START
 if [[ -x "$APPLY_CMD_HOOK_ESCAPED" ]]; then
-  "$APPLY_CMD_HOOK_ESCAPED" --new-session --reason shell-session --quiet >/dev/null 2>&1 || true
+  "$APPLY_CMD_HOOK_ESCAPED" --new-session >/dev/null 2>&1 || true
 fi
 $HOOK_END
 EOF
@@ -246,7 +246,7 @@ EOF
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_PATH"
 launchctl kickstart -k "gui/$(id -u)/$LABEL"
-"$APPLY_CMD" --reason install --quiet >/dev/null 2>&1 || true
+"$APPLY_CMD" >/dev/null 2>&1 || true
 
 echo "lumoshell installed."
 echo "If prompted, grant Automation permission for Terminal control."

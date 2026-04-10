@@ -78,7 +78,7 @@ EOF
   cat > "$zprofile" <<'EOF'
 export FOO="bar"
 # >>> lumoshell managed block >>>
-lumoshell-apply --new-session --reason shell-session --quiet >/dev/null 2>&1 || true
+lumoshell-apply --new-session >/dev/null 2>&1 || true
 EOF
   before_snapshot="$(<"$zprofile")"
 

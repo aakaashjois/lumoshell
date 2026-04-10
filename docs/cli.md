@@ -6,7 +6,7 @@ lumoshell <command> [options]
 
 ## Commands
 
-- `lumoshell apply [--reason REASON] [--new-session] [--dry-run] [--quiet]`
+- `lumoshell apply [--dry-run] [--verbose]`
 - `lumoshell profile set <light|dark> "<profile-name>"`
 - `lumoshell profile show`
 - `lumoshell profile reset <light|dark|all>`
