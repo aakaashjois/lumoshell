@@ -37,7 +37,7 @@ Usage:
   lumoshell <command> [options]
 
 Commands:
-  apply [--reason REASON] [--new-session] [--dry-run] [--quiet]
+  apply [--dry-run] [--verbose]
   profile set <light|dark> <profile-name>
   profile show
   profile reset <light|dark|all>
@@ -82,7 +82,7 @@ profile_set() {
   defaults write "$profile_store_domain" "$key" -string "$profile_name"
   echo "Set $mode profile to \"$profile_name\"."
   echo "Applying updated profile configuration..."
-  exec "$SCRIPT_DIR/lumoshell-apply" --reason profile-set
+  exec "$SCRIPT_DIR/lumoshell-apply"
 }
 
 profile_show() {
@@ -128,7 +128,20 @@ profile_reset() {
   esac
 
   echo "Applying updated profile configuration..."
-  exec "$SCRIPT_DIR/lumoshell-apply" --reason profile-reset
+  exec "$SCRIPT_DIR/lumoshell-apply"
+}
+
+validate_apply_args() {
+  local arg
+  for arg in "$@"; do
+    case "$arg" in
+      --dry-run|--verbose|-h|--help) ;;
+      *)
+        echo "lumoshell apply supports only --dry-run and --verbose." >&2
+        exit 1
+        ;;
+    esac
+  done
 }
 
 cmd="${1:-}"
@@ -140,6 +153,7 @@ shift
 
 case "$cmd" in
   apply)
+    validate_apply_args "$@"
     exec "$SCRIPT_DIR/lumoshell-apply" "$@"
     ;;
   profile)
@@ -177,7 +191,7 @@ case "$cmd" in
     echo "lumoshell-apply: $(command -v lumoshell-apply || true)"
     echo "lumoshell-appearance-sync-agent: $(command -v lumoshell-appearance-sync-agent || true)"
     echo "Terminal profile mode detection:"
-    "$SCRIPT_DIR/lumoshell-apply" --dry-run --reason doctor || true
+    "$SCRIPT_DIR/lumoshell-apply" --dry-run || true
     ;;
   version)
     echo "$VERSION"

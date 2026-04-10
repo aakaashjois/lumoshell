@@ -27,11 +27,11 @@ Lumoshell is built to keep Terminal theming reliable without manual toggling:
 ```text
 macOS appearance events
   -> lumoshell-appearance-sync-agent
-  -> lumoshell-apply --reason theme-change
+  -> lumoshell-apply
   -> Terminal defaults + best-effort open-tab update
 
 new shell session (~/.zprofile managed block)
-  -> lumoshell-apply --new-session --quiet
+  -> lumoshell-apply --new-session
 ```
 
 ## Operational Efficiency

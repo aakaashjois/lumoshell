@@ -5,13 +5,12 @@ set -euo pipefail
 LIGHT_PROFILE_DEFAULT="Basic"
 DARK_PROFILE_DEFAULT="Pro"
 PROFILE_STORE_DOMAIN="com.user.lumoshell"
-QUIET=0
+VERBOSE=0
 DRY_RUN=0
 NEW_SESSION=0
-REASON="manual"
 
 log() {
-  if [[ "$QUIET" -eq 0 ]]; then
+  if [[ "$VERBOSE" -eq 1 ]]; then
     echo "$@"
   fi
 }
@@ -25,33 +24,14 @@ usage() {
 Usage: lumoshell-apply [options]
 
 Options:
-  --reason <value>  Reason label for logs (default: manual)
-  --new-session     Session-hook mode; avoid full open-window sweep
+  --new-session     Internal session-hook mode; avoid full open-window sweep
   --dry-run         Print intended actions only
-  --quiet           Reduce non-error output
+  --verbose         Print apply progress logs
 EOF
-}
-
-sanitize_reason() {
-  local input="$1"
-  local sanitized
-  sanitized="$(printf '%s' "$input" | tr -d '\r\n' | LC_ALL=C tr -cd '\40-\176')"
-  if [[ -z "$sanitized" ]]; then
-    sanitized="manual"
-  fi
-  printf '%s\n' "$sanitized"
 }
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --reason)
-      REASON="${2:-}"
-      if [[ -z "$REASON" ]]; then
-        echo "--reason requires a value" >&2
-        exit 1
-      fi
-      shift 2
-      ;;
     --new-session)
       NEW_SESSION=1
       shift
@@ -60,8 +40,8 @@ while [[ $# -gt 0 ]]; do
       DRY_RUN=1
       shift
       ;;
-    --quiet)
-      QUIET=1
+    --verbose)
+      VERBOSE=1
       shift
       ;;
     -h|--help)
@@ -75,8 +55,6 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
-
-REASON="$(sanitize_reason "$REASON")"
 
 current_mode() {
   local style
@@ -162,7 +140,6 @@ PROFILE="$(profile_for_mode "$MODE")"
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "mode=$MODE"
   echo "profile=$PROFILE"
-  echo "reason=$REASON"
   if [[ "$NEW_SESSION" -eq 1 ]]; then
     echo "action=defaults+active-tab-best-effort"
   else
@@ -171,7 +148,7 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   exit 0
 fi
 
-log "lumoshell-apply: reason=$REASON mode=$MODE profile=$PROFILE"
+log "lumoshell-apply: mode=$MODE profile=$PROFILE"
 
 apply_defaults "$PROFILE"
 

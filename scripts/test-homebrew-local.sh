@@ -155,7 +155,7 @@ else
 fi
 
 echo "[8/8] smoke apply"
-lumoshell apply --dry-run --reason homebrew-local-test
+lumoshell apply --dry-run
 
 if [[ "$CLEANUP" -eq 1 ]]; then
   echo "[cleanup] uninstalling"

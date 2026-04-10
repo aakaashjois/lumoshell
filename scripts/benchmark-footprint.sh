@@ -265,7 +265,7 @@ source "$MEMORY_SUMMARY_FILE"
 if [[ -x "$ROOT_DIR/bin/lumoshell-apply" ]]; then
   APPLY_TIME_OUTPUT="$(mktemp -t lumoshell-apply-time)"
   TMP_FILES+=("$APPLY_TIME_OUTPUT")
-  if /usr/bin/time -l "$ROOT_DIR/bin/lumoshell-apply" --dry-run --reason footprint-benchmark >/dev/null 2>"$APPLY_TIME_OUTPUT"; then
+  if /usr/bin/time -l "$ROOT_DIR/bin/lumoshell-apply" --dry-run >/dev/null 2>"$APPLY_TIME_OUTPUT"; then
     parsed_rss="$(awk '/maximum resident set size/ {print $1; exit}' "$APPLY_TIME_OUTPUT")"
     if [[ "$parsed_rss" =~ ^[0-9]+$ ]]; then
       APPLY_PEAK_RSS_BYTES="$parsed_rss"

@@ -8,7 +8,7 @@ echo "[1/7] lint plist"
 plutil -lint "$ROOT_DIR/launchd/com.user.lumoshell-appearance-sync-agent.plist"
 
 echo "[2/7] dry-run apply"
-"$ROOT_DIR/bin/lumoshell-apply" --dry-run --reason verify
+"$ROOT_DIR/bin/lumoshell-apply" --dry-run
 
 echo "[3/7] build appearance sync agent"
 (
@@ -26,6 +26,6 @@ bash "$ROOT_DIR/tests/install_uninstall_test.sh"
 
 echo "[7/7] smoke wrapper"
 "$ROOT_DIR/bin/lumoshell" version
-"$ROOT_DIR/bin/lumoshell" apply --dry-run --reason smoke
+"$ROOT_DIR/bin/lumoshell" apply --dry-run
 
 echo "verification script completed"

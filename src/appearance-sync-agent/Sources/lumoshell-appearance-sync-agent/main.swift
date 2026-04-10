@@ -54,7 +54,7 @@ final class ApplyRunner {
         self.quiet = quiet
     }
 
-    func run(reason: String) {
+    func run() {
         let now = Date()
         if now.timeIntervalSince(lastRunAt) < minInterval {
             return
@@ -63,7 +63,7 @@ final class ApplyRunner {
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: applyCommand)
-        process.arguments = ["--reason", reason]
+        process.arguments = []
 
         if quiet {
             process.standardOutput = FileHandle.nullDevice
@@ -94,10 +94,10 @@ final class AppearanceSyncAgent {
     func start() {
         _ = NSApplication.shared
         NSApplication.shared.setActivationPolicy(.prohibited)
-        trackAndApply(reason: "startup", force: true)
+        trackAndApply(force: true)
 
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            self?.trackAndApply(reason: "theme-change", force: false)
+            self?.trackAndApply(force: false)
         }
 
         distributedThemeObserver = DistributedNotificationCenter.default().addObserver(
@@ -105,7 +105,7 @@ final class AppearanceSyncAgent {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.trackAndApply(reason: "theme-change", force: false)
+            self?.trackAndApply(force: false)
         }
 
         wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
@@ -113,19 +113,19 @@ final class AppearanceSyncAgent {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.trackAndApply(reason: "wake", force: false)
+            self?.trackAndApply(force: false)
         }
 
         RunLoop.main.run()
     }
 
-    private func trackAndApply(reason: String, force: Bool) {
+    private func trackAndApply(force: Bool) {
         let mode = currentAppearanceMode()
         if !force, mode == lastMode {
             return
         }
         lastMode = mode
-        applyRunner.run(reason: reason)
+        applyRunner.run()
     }
 }
 
