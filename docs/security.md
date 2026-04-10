@@ -1,4 +1,17 @@
-# Security Policy
+# Security
+
+## Security Model and Hardening
+
+- Runs as the logged-in user; no root daemon required.
+- Installer prefers colocated trusted helper binaries by default.
+- Optional PATH lookup (`LUMOSHELL_ALLOW_PATH_LOOKUP=1`) is gated and hardened:
+  - accepted binaries/parent dirs must be owned by `root` or the current user
+  - world-writable binaries/parent dirs are rejected
+
+## Install Mode Trust Boundaries
+
+- Local/manual install trusts your local checkout and shell environment.
+- Homebrew install additionally trusts formula source and brew install lifecycle.
 
 ## Supported Scope
 
@@ -29,8 +42,7 @@ If private reporting channels are not yet configured for this repository, open a
 - Any optional trust expansion (for example PATH-based lookup) must stay opt-in and hardened.
 - New command execution paths should avoid shell injection risks and use explicit argument passing where possible.
 
-## Hardening Notes
+## Additional Hardening Notes
 
 - `LUMOSHELL_ALLOW_PATH_LOOKUP=1` is optional and should only be used in trusted environments.
 - Homebrew install and local/manual install have different trust boundaries; document changes affecting either path.
-
