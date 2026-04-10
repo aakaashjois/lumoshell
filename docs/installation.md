@@ -11,7 +11,7 @@
 Install from the official tap:
 
 ```sh
-brew tap aakaashjois/lumoshell
+brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
 brew install lumoshell
 ```
 

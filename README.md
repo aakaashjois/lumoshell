@@ -3,7 +3,7 @@
 [![Release](https://img.shields.io/github/v/release/aakaashjois/lumoshell?display_name=tag)](https://github.com/aakaashjois/lumoshell/releases)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![macOS](https://img.shields.io/badge/platform-macOS-black)](https://www.apple.com/macos/)
-[![Homebrew Tap](https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange)](https://github.com/aakaashjois/homebrew-lumoshell)
+[![Homebrew Tap](https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange)](https://github.com/aakaashjois/lumoshell)
 [![CI](https://img.shields.io/github/actions/workflow/status/aakaashjois/lumoshell/release.yml?branch=main)](https://github.com/aakaashjois/lumoshell/actions)
 
 `lumoshell` keeps Apple Terminal profiles aligned with macOS light/dark mode automatically.
@@ -11,7 +11,7 @@
 ## Quick Start
 
 ```sh
-brew tap aakaashjois/lumoshell
+brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
 brew install lumoshell
 lumoshell install
 ```
