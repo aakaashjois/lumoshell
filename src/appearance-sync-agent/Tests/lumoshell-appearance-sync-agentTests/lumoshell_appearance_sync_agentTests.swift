@@ -33,4 +33,9 @@ final class LumoshellAppearanceSyncAgentTests: XCTestCase {
         XCTAssertEqual(config.applyCommand, "/bin/sh")
         XCTAssertTrue(config.quiet)
     }
+
+    func testParseArgsAcceptsLogFile() {
+        let config = parseArgs(arguments: ["--log-file", "~/tmp/lumoshell.log"])
+        XCTAssertTrue(config.logFile.hasSuffix("/tmp/lumoshell.log"))
+    }
 }
