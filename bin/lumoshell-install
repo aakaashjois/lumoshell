@@ -225,6 +225,8 @@ cat > "$LAUNCH_AGENT_PATH" <<EOF
     <string>$AGENT_CMD_XML</string>
     <string>--apply-cmd</string>
     <string>$APPLY_CMD_XML</string>
+    <string>--log-file</string>
+    <string>$LOG_PATH_XML</string>
     <string>--quiet</string>
   </array>
   <key>RunAtLoad</key>

@@ -10,6 +10,7 @@ lumoshell <command> [options]
 - `lumoshell profile set <light|dark> "<profile-name>"`
 - `lumoshell profile show`
 - `lumoshell profile reset <light|dark|all>`
+- `lumoshell logs` (prints sync-agent logs from the last 1 hour)
 - `lumoshell install`
 - `lumoshell uninstall`
 - `lumoshell doctor`

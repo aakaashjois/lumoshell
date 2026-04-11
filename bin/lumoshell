@@ -71,6 +71,7 @@ Commands:
   profile set <light|dark> <profile-name>
   profile show
   profile reset <light|dark|all>
+  logs
   install
   uninstall
   doctor
@@ -89,6 +90,7 @@ EOF
 }
 
 profile_store_domain="com.user.lumoshell"
+agent_log_path="${HOME}/Library/Logs/lumoshell/appearance-sync-agent.log"
 profile_key_for_mode() {
   case "$1" in
     light) echo "LightProfile" ;;
@@ -180,6 +182,30 @@ validate_apply_args() {
   done
 }
 
+show_logs() {
+  if [[ -n "${1:-}" ]]; then
+    echo "lumoshell logs does not accept positional arguments." >&2
+    exit 1
+  fi
+
+  if [[ ! -f "$agent_log_path" ]]; then
+    echo "No logs found at $agent_log_path"
+    exit 0
+  fi
+
+  local cutoff_iso
+  cutoff_iso="$(date -u -v-1H '+%Y-%m-%dT%H:%M:%SZ')"
+  awk -v cutoff="$cutoff_iso" '
+    NF == 0 { next }
+    {
+      ts=$1
+      if (ts >= cutoff) {
+        print $0
+      }
+    }
+  ' "$agent_log_path"
+}
+
 cmd="${1:-help}"
 if [[ "$cmd" == "help" || "$cmd" == "-h" || "$cmd" == "--help" ]]; then
   usage
@@ -221,6 +247,9 @@ case "$cmd" in
     ;;
   uninstall)
     exec "$SCRIPT_DIR/lumoshell-uninstall" "$@"
+    ;;
+  logs)
+    show_logs "${1:-}"
     ;;
   doctor)
     echo "lumoshell version: $VERSION"
