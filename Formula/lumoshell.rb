@@ -40,7 +40,7 @@ class Lumoshell < Formula
         lumoshell install
 
       Test a one-time apply immediately:
-        lumoshell apply --reason post-install
+        lumoshell apply --dry-run
 
       Then change macOS appearance (Light/Dark) to confirm automatic sync.
       If prompted, allow Terminal Automation permissions.

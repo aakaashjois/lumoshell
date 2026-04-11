@@ -2,7 +2,26 @@
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+resolve_realpath() {
+  local path="$1"
+  if command -v realpath >/dev/null 2>&1; then
+    realpath "$path"
+    return
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$path"
+    return
+  fi
+
+  (
+    cd -- "$(dirname -- "$path")"
+    printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$path")"
+  )
+}
+
+SCRIPT_PATH="$(resolve_realpath "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 VERSION_PLACEHOLDER="__LUMOSHELL_VERSION__"
 
 resolve_version() {
@@ -12,16 +31,27 @@ resolve_version() {
     return
   fi
 
+  # Homebrew installs from Cellar paths like:
+  # /opt/homebrew/Cellar/lumoshell/<version>/bin/lumoshell
+  if [[ "$SCRIPT_PATH" =~ /Cellar/lumoshell/([^/]+)/bin/lumoshell$ ]]; then
+    echo "${BASH_REMATCH[1]}"
+    return
+  fi
+
   # In development checkouts, prefer the latest git tag if available.
   if command -v git >/dev/null 2>&1; then
     local repo_root
     repo_root="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
     if [[ -n "$repo_root" ]]; then
-      local tag
-      tag="$(git -C "$repo_root" describe --tags --abbrev=0 2>/dev/null || true)"
-      if [[ -n "$tag" ]]; then
-        echo "${tag#v}"
-        return
+      local remote_url
+      remote_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
+      if [[ "$remote_url" == *"aakaashjois/lumoshell"* ]]; then
+        local tag
+        tag="$(git -C "$repo_root" describe --tags --abbrev=0 2>/dev/null || true)"
+        if [[ -n "$tag" ]]; then
+          echo "${tag#v}"
+          return
+        fi
       fi
     fi
   fi
@@ -45,6 +75,7 @@ Commands:
   uninstall
   doctor
   version
+  help
 EOF
 }
 
@@ -72,7 +103,7 @@ profile_key_for_mode() {
 profile_set() {
   local mode="${1:-}"
   local profile_name="${2:-}"
-  if [[ -z "$mode" || -z "$profile_name" ]]; then
+  if [[ -z "$mode" || -z "$profile_name" || -n "${3:-}" ]]; then
     profile_usage
     exit 1
   fi
@@ -86,6 +117,11 @@ profile_set() {
 }
 
 profile_show() {
+  if [[ -n "${1:-}" ]]; then
+    profile_usage
+    exit 1
+  fi
+
   local light_value dark_value
   light_value="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null || true)"
   dark_value="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null || true)"
@@ -105,7 +141,7 @@ profile_show() {
 
 profile_reset() {
   local target="${1:-}"
-  if [[ -z "$target" ]]; then
+  if [[ -z "$target" || -n "${2:-}" ]]; then
     profile_usage
     exit 1
   fi
@@ -144,10 +180,10 @@ validate_apply_args() {
   done
 }
 
-cmd="${1:-}"
-if [[ -z "$cmd" ]]; then
+cmd="${1:-help}"
+if [[ "$cmd" == "help" || "$cmd" == "-h" || "$cmd" == "--help" ]]; then
   usage
-  exit 1
+  exit 0
 fi
 shift
 
@@ -158,9 +194,9 @@ case "$cmd" in
     ;;
   profile)
     subcmd="${1:-}"
-    if [[ -z "$subcmd" ]]; then
+    if [[ -z "$subcmd" || "$subcmd" == "help" || "$subcmd" == "-h" || "$subcmd" == "--help" ]]; then
       profile_usage
-      exit 1
+      exit 0
     fi
     shift
     case "$subcmd" in
@@ -168,7 +204,7 @@ case "$cmd" in
         profile_set "${1:-}" "${2:-}"
         ;;
       show)
-        profile_show
+        profile_show "$@"
         ;;
       reset)
         profile_reset "${1:-}"

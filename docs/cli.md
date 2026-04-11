@@ -14,6 +14,9 @@ lumoshell <command> [options]
 - `lumoshell uninstall`
 - `lumoshell doctor`
 - `lumoshell version`
+- `lumoshell help`
+
+`lumoshell`, `lumoshell help`, and `lumoshell --help` print the usage summary.
 
 ## Helper Binaries
 
