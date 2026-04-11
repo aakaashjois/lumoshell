@@ -87,8 +87,16 @@ resolve_helper_cmd() {
   script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
   candidate="${script_dir}/${cmd_name}"
   if [[ -x "$candidate" ]]; then
+    # Prefer the colocated helper path as-is (for example /opt/homebrew/bin/*)
+    # so LaunchAgent/config paths remain stable across Homebrew upgrades.
     resolved="$(resolve_realpath "$candidate")"
-    printf '%s\n' "$resolved"
+    if [[ "$resolved" != /* ]]; then
+      return 1
+    fi
+    if ! validate_path_resolved_command "$resolved" "$cmd_name"; then
+      return 1
+    fi
+    printf '%s\n' "$candidate"
     return
   fi
 
