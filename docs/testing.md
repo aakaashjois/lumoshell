@@ -20,8 +20,4 @@ Useful options:
 - `--no-reinstall` (verification only)
 - `--tap <name>` (override temporary tap name)
 
-For release-quality checks before PRs, also run:
 
-```sh
-bash scripts/benchmark-footprint.sh
-```

@@ -38,6 +38,7 @@ xml_escape() {
     -e "s/'/\&apos;/g"
 }
 
+# shellcheck disable=SC2016
 shell_double_quote_escape() {
   printf '%s' "$1" | sed \
     -e 's/\\/\\\\/g' \
