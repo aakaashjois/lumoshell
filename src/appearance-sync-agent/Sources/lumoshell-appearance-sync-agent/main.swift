@@ -8,6 +8,7 @@ enum AppearanceMode: String, Equatable {
 
 struct Config {
     var applyCommand: String = "lumoshell-apply"
+    var darkNotifyCommand: String = "dark-notify"
     var quiet: Bool = false
     var logFile: String = ("~/Library/Logs/lumoshell/appearance-sync-agent.log" as NSString).expandingTildeInPath
 }
@@ -31,58 +32,101 @@ func resolveExecutablePath(_ command: String) -> String? {
 }
 
 func currentAppearanceMode() -> AppearanceMode {
-    let app = NSApplication.shared
-    let match = app.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
-    switch match {
-    case .some(.darkAqua):
-        return .dark
-    case .some(.aqua):
-        return .light
-    default:
-        let style = UserDefaults.standard.string(forKey: "AppleInterfaceStyle")
-        return style == "Dark" ? .dark : .light
-    }
+    let match = NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
+    return match == .darkAqua ? .dark : .light
 }
 
 final class ApplyRunner {
-    private let applyCommand: String
-    private let quiet: Bool
     private let logger: AgentLogger
+    private let quiet: Bool
     private var lastRunAt: Date = .distantPast
     private let minInterval: TimeInterval = 0.25
+    private let profileStoreDomain = "com.user.lumoshell"
+    private let terminalDomain = "com.apple.Terminal"
+    private let lightDefaultProfile = "Basic"
+    private let darkDefaultProfile = "Pro"
 
-    init(applyCommand: String, quiet: Bool, logger: AgentLogger) {
-        self.applyCommand = applyCommand
+    init(quiet: Bool, logger: AgentLogger) {
         self.quiet = quiet
         self.logger = logger
     }
 
-    func run() {
+    func run(trigger: String, mode: AppearanceMode) {
         let now = Date()
         if now.timeIntervalSince(lastRunAt) < minInterval {
-            logger.log("skipping apply due to debounce window", level: .debug)
+            logger.log("trigger=\(trigger) skipping apply due to debounce window", level: .debug)
             return
         }
         lastRunAt = now
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: applyCommand)
-        process.arguments = []
+        let profile = resolveProfile(mode: mode)
+        applyTerminalDefaults(profile: profile)
+        applyOpenTabs(profile: profile)
+        logger.log("trigger=\(trigger) mode=\(mode.rawValue) applied profile='\(profile)'", level: .info)
+    }
 
-        if quiet {
-            process.standardOutput = FileHandle.nullDevice
-            process.standardError = FileHandle.nullDevice
+    private func resolveProfile(mode: AppearanceMode) -> String {
+        let profileStore = UserDefaults(suiteName: profileStoreDomain)
+        let key = mode == .dark ? "DarkProfile" : "LightProfile"
+        if let stored = profileStore?.string(forKey: key), !stored.isEmpty {
+            return stored
         }
+        return mode == .dark ? darkDefaultProfile : lightDefaultProfile
+    }
+
+    private func applyTerminalDefaults(profile: String) {
+        guard let terminalDefaults = UserDefaults(suiteName: terminalDomain) else {
+            logger.log("failed to open Terminal defaults domain", level: .error)
+            return
+        }
+        terminalDefaults.set(profile, forKey: "Default Window Settings")
+        terminalDefaults.set(profile, forKey: "Startup Window Settings")
+        terminalDefaults.synchronize()
+    }
+
+    private func applyOpenTabs(profile: String) {
+        guard isTerminalRunning() else {
+            return
+        }
+
+        let script = """
+        set targetProfile to "\(profile.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))"
+        with timeout of 3 seconds
+          tell application "Terminal"
+            if (count of windows) > 0 then
+              set current settings of tabs of windows to settings set targetProfile
+            end if
+            set default settings to settings set targetProfile
+            set startup settings to settings set targetProfile
+          end tell
+        end timeout
+        """
+
+        let process = Process()
+        let stderrPipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        process.arguments = ["-e", script]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = stderrPipe
 
         do {
             try process.run()
-            logger.log("launched apply command '\(applyCommand)'", level: .info)
+            process.waitUntilExit()
         } catch {
-            logger.log("failed to execute \(applyCommand): \(error)", level: .error)
-            if !quiet {
-                fputs("lumoshell-appearance-sync-agent: failed to execute \(applyCommand): \(error)\n", stderr)
-            }
+            logger.log("failed to launch osascript for open-tab apply: \(error)", level: .error)
+            return
         }
+
+        if process.terminationStatus != 0 {
+            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let stderrText = String(data: stderrData, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown osascript error"
+            logger.log("open-tab apply failed with status=\(process.terminationStatus): \(stderrText)", level: .error)
+        }
+    }
+
+    private func isTerminalRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.apple.Terminal" }
     }
 }
 
@@ -191,81 +235,91 @@ final class AgentLogger {
 final class AppearanceSyncAgent {
     private let applyRunner: ApplyRunner
     private let logger: AgentLogger
+    private let darkNotifyCommand: String
     private var appearanceObservation: NSKeyValueObservation?
-    private var distributedThemeObserver: NSObjectProtocol?
-    private var userDefaultsObserver: NSObjectProtocol?
-    private var wakeObserver: NSObjectProtocol?
-    private var sessionObserver: NSObjectProtocol?
-    private var reconciliationTimer: Timer?
+    private var darkNotifyProcess: Process?
+    private var darkNotifyOutputPipe: Pipe?
     private var lastMode: AppearanceMode?
 
     init(config: Config) {
         self.logger = AgentLogger(logFilePath: config.logFile)
-        self.applyRunner = ApplyRunner(applyCommand: config.applyCommand, quiet: config.quiet, logger: logger)
+        self.applyRunner = ApplyRunner(quiet: config.quiet, logger: logger)
+        self.darkNotifyCommand = config.darkNotifyCommand
+        if !config.applyCommand.isEmpty && config.applyCommand != "lumoshell-apply" {
+            logger.log("ignoring --apply-cmd in swift-native apply mode", level: .debug)
+        }
     }
 
     func start() {
         _ = NSApplication.shared
         NSApplication.shared.setActivationPolicy(.prohibited)
         logger.log("appearance sync agent started", level: .info)
-        trackAndApply(force: true)
+        trackAndApply(trigger: "startup", force: true)
 
         appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            self?.trackAndApply(force: false)
+            self?.trackAndApply(trigger: "effectiveAppearance", force: false)
         }
-
-        distributedThemeObserver = DistributedNotificationCenter.default().addObserver(
-            forName: Notification.Name("AppleInterfaceThemeChangedNotification"),
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.trackAndApply(force: false)
-        }
-
-        userDefaultsObserver = NotificationCenter.default.addObserver(
-            forName: UserDefaults.didChangeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.trackAndApply(force: false)
-        }
-
-        wakeObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.didWakeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.trackAndApply(force: false)
-        }
-
-        sessionObserver = NSWorkspace.shared.notificationCenter.addObserver(
-            forName: NSWorkspace.sessionDidBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.trackAndApply(force: false)
-        }
-
-        // Safety net: reconcile periodically in case macOS drops theme-change notifications.
-        reconciliationTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.trackAndApply(force: false)
-        }
+        startDarkNotifyWatcher()
 
         RunLoop.main.run()
     }
 
-    private func trackAndApply(force: Bool) {
+    private func trackAndApply(trigger: String, force: Bool) {
         let mode = currentAppearanceMode()
         if !force, mode == lastMode {
             return
         }
         lastMode = mode
-        if force {
-            logger.log("applying profile for initial mode=\(mode.rawValue)", level: .info)
-        } else {
-            logger.log("detected appearance change, mode=\(mode.rawValue)", level: .info)
+        applyRunner.run(trigger: trigger, mode: mode)
+    }
+
+    private func startDarkNotifyWatcher() {
+        guard let resolvedCommand = resolveExecutablePath(darkNotifyCommand) else {
+            logger.log("dark-notify command not found at '\(darkNotifyCommand)'", level: .error)
+            return
         }
-        applyRunner.run()
+
+        let process = Process()
+        let outputPipe = Pipe()
+        process.executableURL = URL(fileURLWithPath: resolvedCommand)
+        process.arguments = []
+        process.standardOutput = outputPipe
+        process.standardError = FileHandle.nullDevice
+
+        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            guard let self, !data.isEmpty, let output = String(data: data, encoding: .utf8) else {
+                return
+            }
+            let lines = output
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
+            for line in lines {
+                switch line {
+                case "dark":
+                    self.lastMode = .dark
+                    self.applyRunner.run(trigger: "dark-notify", mode: .dark)
+                case "light":
+                    self.lastMode = .light
+                    self.applyRunner.run(trigger: "dark-notify", mode: .light)
+                default:
+                    continue
+                }
+            }
+        }
+
+        process.terminationHandler = { [weak self] task in
+            self?.logger.log("dark-notify exited with status=\(task.terminationStatus)", level: .error)
+        }
+
+        do {
+            try process.run()
+            darkNotifyProcess = process
+            darkNotifyOutputPipe = outputPipe
+            logger.log("dark-notify watcher started using '\(resolvedCommand)'", level: .info)
+        } catch {
+            logger.log("failed to start dark-notify watcher: \(error)", level: .error)
+        }
     }
 }
 
@@ -283,6 +337,13 @@ func parseArgs(arguments: [String]) -> Config {
             }
             config.applyCommand = arguments[index + 1]
             index += 2
+        case "--dark-notify-cmd":
+            guard index + 1 < arguments.count else {
+                fputs("--dark-notify-cmd requires a value\n", stderr)
+                exit(1)
+            }
+            config.darkNotifyCommand = arguments[index + 1]
+            index += 2
         case "--quiet":
             config.quiet = true
             index += 1
@@ -297,7 +358,8 @@ func parseArgs(arguments: [String]) -> Config {
             print("""
             Usage: lumoshell-appearance-sync-agent [options]
 
-              --apply-cmd <path>   Path to lumoshell-apply (default: lumoshell-apply)
+              --apply-cmd <path>   Deprecated in swift-native apply mode
+              --dark-notify-cmd    Path to dark-notify executable (default: dark-notify)
               --quiet              Reduce output
               --log-file <path>    Path for sync-agent log file
             """)
@@ -316,12 +378,5 @@ func parseArgs() -> Config {
 }
 
 let config = parseArgs()
-guard let resolvedApplyCommand = resolveExecutablePath(config.applyCommand) else {
-    fputs("lumoshell-appearance-sync-agent: could not resolve executable '\(config.applyCommand)' from PATH or absolute path\n", stderr)
-    exit(1)
-}
-
-var resolvedConfig = config
-resolvedConfig.applyCommand = resolvedApplyCommand
-let agent = AppearanceSyncAgent(config: resolvedConfig)
+let agent = AppearanceSyncAgent(config: config)
 agent.start()
