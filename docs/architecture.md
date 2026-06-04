@@ -47,8 +47,4 @@ Current measured footprint (from local benchmark run):
 - Compiled project disk footprint: about `119.57 KB`
 - Runtime memory usage (appearance sync agent RSS): about `26.67 MB` peak
 
-Reproduce/update these numbers with:
 
-```sh
-bash scripts/benchmark-footprint.sh
-```

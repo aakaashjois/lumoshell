@@ -73,8 +73,12 @@ final class ApplyRunner {
             return
         }
 
-        let script = """
-        set targetProfile to "\(profile.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\""))"
+        let escapedProfile = profile
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+
+        let scriptSource = """
+        set targetProfile to "\(escapedProfile)"
         with timeout of 3 seconds
           tell application "Terminal"
             if (count of windows) > 0 then
@@ -86,26 +90,18 @@ final class ApplyRunner {
         end timeout
         """
 
-        let process = Process()
-        let stderrPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = stderrPipe
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-        } catch {
-            logger.log("failed to launch osascript for open-tab apply: \(error)", level: .error)
+        guard let appleScript = NSAppleScript(source: scriptSource) else {
+            logger.log("failed to compile NSAppleScript", level: .error)
             return
         }
 
-        if process.terminationStatus != 0 {
-            let stderrData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
-            let stderrText = String(data: stderrData, encoding: .utf8)?
-                .trimmingCharacters(in: .whitespacesAndNewlines) ?? "unknown osascript error"
-            logger.log("open-tab apply failed with status=\(process.terminationStatus): \(stderrText)", level: .error)
+        var errorDict: NSDictionary?
+        appleScript.executeAndReturnError(&errorDict)
+
+        if let error = errorDict {
+            let errorMsg = error[NSAppleScript.errorMessage] as? String ?? "unknown NSAppleScript error"
+            let errorCode = error[NSAppleScript.errorNumber] as? Int ?? -1
+            logger.log("open-tab apply failed with status=\(errorCode): \(errorMsg)", level: .error)
         }
     }
 
@@ -154,7 +150,10 @@ final class AgentLogger {
                 withIntermediateDirectories: true
             )
         } catch {
-            fputs("lumoshell-appearance-sync-agent: failed to create log directory at \(directoryPath): \(error)\n", stderr)
+            fputs(
+                "lumoshell-appearance-sync-agent: failed to create log directory at \(directoryPath): \(error)\n",
+                stderr
+            )
         }
     }
 
@@ -235,7 +234,12 @@ final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
         logger.log("appearance sync agent started", level: .info)
         trackAndApply(trigger: "startup", force: true)
 
-        themeObserver = DistributedNotificationCenter.default().addObserver(forName: Notification.Name("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main) { [weak self] _ in
+        let themeNotification = Notification.Name("AppleInterfaceThemeChangedNotification")
+        themeObserver = DistributedNotificationCenter.default().addObserver(
+            forName: themeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
             self?.trackAndApply(trigger: "AppleInterfaceThemeChangedNotification", force: false)
         }
     }
@@ -255,8 +259,6 @@ final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
         lastMode = mode
         applyRunner.run(trigger: trigger, mode: mode)
     }
-
-
 }
 
 func parseArgs(arguments: [String]) -> Config {
