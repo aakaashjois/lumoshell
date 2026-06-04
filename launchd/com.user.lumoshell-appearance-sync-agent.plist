@@ -12,6 +12,7 @@
     <string>__APPLY_CMD__</string>
     <string>--log-file</string>
     <string>__LOG_PATH__</string>
+
     <string>--quiet</string>
   </array>
 
