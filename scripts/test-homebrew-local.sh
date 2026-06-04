@@ -93,11 +93,14 @@ command -v brew >/dev/null
 brew --version >/dev/null
 export HOMEBREW_NO_AUTO_UPDATE=1
 export HOMEBREW_NO_SANDBOX=1
+if ! brew tap | rg -x "cormacrelf/tap" >/dev/null; then
+  brew tap cormacrelf/tap
+fi
 
 if [[ "$REINSTALL" -eq 1 ]]; then
   echo "[2/7] ensure local tap exists ($TAP_NAME)"
   if ! brew tap | rg -x "$TAP_NAME" >/dev/null; then
-    brew tap-new "$TAP_NAME"
+    brew tap-new --no-git "$TAP_NAME"
     TAP_CREATED=1
   fi
   TAP_REPO="$(brew --repository "$TAP_NAME")"

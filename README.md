@@ -49,3 +49,7 @@ lumoshell install
 - Security policy: [`docs/security.md`](docs/security.md)
 - License: [`LICENSE`](LICENSE)
 
+## Acknowledgements
+
+The native Swift appearance sync daemon's event listener architecture was heavily inspired by the approach used in [cormacrelf/dark-notify](https://github.com/cormacrelf/dark-notify).
+

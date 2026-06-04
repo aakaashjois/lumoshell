@@ -118,6 +118,7 @@ run_homebrew_opt_path_stability_test() {
 
   grep -Fq "/opt/homebrew/bin/lumoshell-apply" "$launch_agent_path" || fail "LaunchAgent should reference stable opt-bin lumoshell-apply path"
   grep -Fq "/opt/homebrew/bin/lumoshell-appearance-sync-agent" "$launch_agent_path" || fail "LaunchAgent should reference stable opt-bin agent path"
+
   if grep -Fq "/Cellar/lumoshell/" "$launch_agent_path"; then
     fail "LaunchAgent should not reference versioned Cellar paths"
   fi

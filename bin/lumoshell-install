@@ -140,6 +140,8 @@ require_resolved_command() {
   exit 1
 }
 
+
+
 remove_managed_block() {
   local file="$1"
   [[ -f "$file" ]] || return 0

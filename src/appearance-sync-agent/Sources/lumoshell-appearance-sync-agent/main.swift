@@ -8,32 +8,16 @@ enum AppearanceMode: String, Equatable {
 
 struct Config {
     var applyCommand: String = "lumoshell-apply"
-    var darkNotifyCommand: String = "dark-notify"
     var quiet: Bool = false
     var logFile: String = ("~/Library/Logs/lumoshell/appearance-sync-agent.log" as NSString).expandingTildeInPath
 }
 
-func resolveExecutablePath(_ command: String) -> String? {
-    let fileManager = FileManager.default
-    let expanded = (command as NSString).expandingTildeInPath
-    if expanded.contains("/") {
-        return fileManager.isExecutableFile(atPath: expanded) ? expanded : nil
-    }
-
-    let environmentPath = ProcessInfo.processInfo.environment["PATH"] ?? ""
-    for component in environmentPath.split(separator: ":") {
-        let candidate = String(component) + "/" + expanded
-        if fileManager.isExecutableFile(atPath: candidate) {
-            return candidate
-        }
-    }
-
-    return nil
-}
-
 func currentAppearanceMode() -> AppearanceMode {
-    let match = NSApplication.shared.effectiveAppearance.bestMatch(from: [.aqua, .darkAqua])
-    return match == .darkAqua ? .dark : .light
+    // We use UserDefaults because it updates synchronously with the Distributed Notification.
+    // AppKit's effectiveAppearance updates asynchronously and can cause a race condition
+    // where it still returns the old mode, causing the agent to silently drop the event.
+    let isDark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+    return isDark ? .dark : .light
 }
 
 final class ApplyRunner {
@@ -232,36 +216,35 @@ final class AgentLogger {
     }
 }
 
-final class AppearanceSyncAgent {
+final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
     private let applyRunner: ApplyRunner
     private let logger: AgentLogger
-    private let darkNotifyCommand: String
-    private var appearanceObservation: NSKeyValueObservation?
-    private var darkNotifyProcess: Process?
-    private var darkNotifyOutputPipe: Pipe?
     private var lastMode: AppearanceMode?
+    private var themeObserver: NSObjectProtocol?
 
     init(config: Config) {
         self.logger = AgentLogger(logFilePath: config.logFile)
-        self.applyRunner = ApplyRunner(quiet: config.quiet, logger: logger)
-        self.darkNotifyCommand = config.darkNotifyCommand
+        self.applyRunner = ApplyRunner(quiet: config.quiet, logger: self.logger)
+        super.init()
         if !config.applyCommand.isEmpty && config.applyCommand != "lumoshell-apply" {
             logger.log("ignoring --apply-cmd in swift-native apply mode", level: .debug)
         }
     }
 
-    func start() {
-        _ = NSApplication.shared
-        NSApplication.shared.setActivationPolicy(.prohibited)
+    func applicationDidFinishLaunching(_ notification: Notification) {
         logger.log("appearance sync agent started", level: .info)
         trackAndApply(trigger: "startup", force: true)
 
-        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
-            self?.trackAndApply(trigger: "effectiveAppearance", force: false)
+        themeObserver = DistributedNotificationCenter.default().addObserver(forName: Notification.Name("AppleInterfaceThemeChangedNotification"), object: nil, queue: .main) { [weak self] _ in
+            self?.trackAndApply(trigger: "AppleInterfaceThemeChangedNotification", force: false)
         }
-        startDarkNotifyWatcher()
+    }
 
-        RunLoop.main.run()
+    func start() {
+        let app = NSApplication.shared
+        app.setActivationPolicy(.prohibited)
+        app.delegate = self
+        app.run()
     }
 
     private func trackAndApply(trigger: String, force: Bool) {
@@ -273,54 +256,7 @@ final class AppearanceSyncAgent {
         applyRunner.run(trigger: trigger, mode: mode)
     }
 
-    private func startDarkNotifyWatcher() {
-        guard let resolvedCommand = resolveExecutablePath(darkNotifyCommand) else {
-            logger.log("dark-notify command not found at '\(darkNotifyCommand)'", level: .error)
-            return
-        }
 
-        let process = Process()
-        let outputPipe = Pipe()
-        process.executableURL = URL(fileURLWithPath: resolvedCommand)
-        process.arguments = []
-        process.standardOutput = outputPipe
-        process.standardError = FileHandle.nullDevice
-
-        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard let self, !data.isEmpty, let output = String(data: data, encoding: .utf8) else {
-                return
-            }
-            let lines = output
-                .split(separator: "\n", omittingEmptySubsequences: true)
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-            for line in lines {
-                switch line {
-                case "dark":
-                    self.lastMode = .dark
-                    self.applyRunner.run(trigger: "dark-notify", mode: .dark)
-                case "light":
-                    self.lastMode = .light
-                    self.applyRunner.run(trigger: "dark-notify", mode: .light)
-                default:
-                    continue
-                }
-            }
-        }
-
-        process.terminationHandler = { [weak self] task in
-            self?.logger.log("dark-notify exited with status=\(task.terminationStatus)", level: .error)
-        }
-
-        do {
-            try process.run()
-            darkNotifyProcess = process
-            darkNotifyOutputPipe = outputPipe
-            logger.log("dark-notify watcher started using '\(resolvedCommand)'", level: .info)
-        } catch {
-            logger.log("failed to start dark-notify watcher: \(error)", level: .error)
-        }
-    }
 }
 
 func parseArgs(arguments: [String]) -> Config {
@@ -337,13 +273,6 @@ func parseArgs(arguments: [String]) -> Config {
             }
             config.applyCommand = arguments[index + 1]
             index += 2
-        case "--dark-notify-cmd":
-            guard index + 1 < arguments.count else {
-                fputs("--dark-notify-cmd requires a value\n", stderr)
-                exit(1)
-            }
-            config.darkNotifyCommand = arguments[index + 1]
-            index += 2
         case "--quiet":
             config.quiet = true
             index += 1
@@ -359,7 +288,6 @@ func parseArgs(arguments: [String]) -> Config {
             Usage: lumoshell-appearance-sync-agent [options]
 
               --apply-cmd <path>   Deprecated in swift-native apply mode
-              --dark-notify-cmd    Path to dark-notify executable (default: dark-notify)
               --quiet              Reduce output
               --log-file <path>    Path for sync-agent log file
             """)

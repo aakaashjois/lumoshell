@@ -6,7 +6,6 @@ class Lumoshell < Formula
   license "MIT"
 
   head "https://github.com/aakaashjois/lumoshell.git", branch: "main"
-
   def install
     %w[
       lumoshell
