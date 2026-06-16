@@ -23,7 +23,7 @@ echo "[cli_contract_test] help surface"
 help_output="$("$CLI" help)"
 assert_contains "$help_output" "apply [--dry-run] [--verbose]" "expected apply command in help output"
 assert_contains "$help_output" "status" "expected status in help output"
-assert_contains "$help_output" "setup [--reset]" "expected setup in help output"
+assert_contains "$help_output" "setup [--reset | --remove]" "expected setup in help output"
 assert_contains "$help_output" "logs" "expected logs command in help output"
 assert_contains "$help_output" "doctor" "expected doctor command in help output"
 

@@ -166,7 +166,7 @@ lumoshell apply --dry-run
 
 if [[ "$CLEANUP" -eq 1 ]]; then
   echo "[cleanup] uninstalling"
-  lumoshell uninstall || true
+  lumoshell setup --remove || true
   brew uninstall --formula lumoshell || true
   if [[ "$TAP_CREATED" -eq 1 ]]; then
     brew untap "$TAP_NAME" || true

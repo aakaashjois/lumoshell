@@ -38,7 +38,7 @@ lumoshell setup
 ## Uninstall Manual Install
 
 ```sh
-lumoshell uninstall
+lumoshell setup --remove
 rm -f /usr/local/bin/lumoshell
 rm -f /usr/local/bin/lumoshell-apply
 rm -f /usr/local/bin/lumoshell-install

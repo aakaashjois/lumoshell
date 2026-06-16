@@ -63,10 +63,9 @@ Usage:
 
 Commands:
   apply [--dry-run] [--verbose]
-  setup [--reset]
+  setup [--reset | --remove]
   status
   logs
-  uninstall
   doctor
   version
   help
@@ -216,8 +215,10 @@ setup() {
     echo "Reset all profile overrides."
     echo "Applying updated profile configuration..."
     exec "$SCRIPT_DIR/lumoshell-apply"
+  elif [[ "${1:-}" == "--remove" ]]; then
+    exec "$SCRIPT_DIR/lumoshell-uninstall" "$@"
   elif [[ -n "${1:-}" ]]; then
-    echo "lumoshell setup takes only the --reset option." >&2
+    echo "lumoshell setup takes only the --reset or --remove option." >&2
     exit 1
   fi
 
@@ -361,9 +362,6 @@ case "$cmd" in
     ;;
   install)
     exec "$SCRIPT_DIR/lumoshell-install" "$@"
-    ;;
-  uninstall)
-    exec "$SCRIPT_DIR/lumoshell-uninstall" "$@"
     ;;
   logs)
     show_logs "${1:-}"

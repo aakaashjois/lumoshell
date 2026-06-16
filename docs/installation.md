@@ -39,7 +39,7 @@ brew services list
 Uninstall:
 
 ```sh
-lumoshell uninstall
+lumoshell setup --remove
 brew uninstall --formula lumoshell
 ```
 
