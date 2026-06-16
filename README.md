@@ -14,13 +14,13 @@ Lumoshell effortlessly keeps your terminal perfectly in sync with macOS light an
 
 https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 
-## Quick Install
+## ⚡ Quick Install
 
 Simply provide this GitHub repository link to an AI agent and ask it to install and configure Lumoshell for you. For example, you can use the following prompt:
 
 > "install https://github.com/aakaashjois/lumoshell using brew and set it up for me."
 
-## Manual Install
+## 🛠️ Manual Install
 
 ```sh
 brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
@@ -29,14 +29,14 @@ brew install lumoshell
 lumoshell setup
 ```
 
-## At A Glance
+## 🌟 At A Glance
 
 - Apple Terminal + macOS only
 - Event-driven sync agent (no polling loop)
 - Keeps defaults and new sessions aligned to active theme
 - Best-effort live updates for open tabs (with Automation permission)
 
-## Common Commands
+## 💻 Common Commands
 
 - `lumoshell setup`: interactively select the Terminal profiles to use for Light and Dark modes.
 - `lumoshell setup --list`: list all available Terminal profiles.
@@ -54,7 +54,7 @@ If you are an AI agent setting up Lumoshell for a user, you cannot use the inter
 2. **Configure (Non-Interactive)**: Run `lumoshell setup --light "<light_profile>" --dark "<dark_profile>"` to configure the application without a TUI.
 3. If the user does not specify preferred profiles, reasonable defaults are `Basic` for light mode and `Pro` for dark mode.
 
-## Documentation
+## 📚 Documentation
 
 - Start here: [`docs/README.md`](docs/README.md)
 - Installation: [`docs/installation.md`](docs/installation.md)
@@ -66,13 +66,13 @@ If you are an AI agent setting up Lumoshell for a user, you cannot use the inter
 - Validation and testing: [`docs/testing.md`](docs/testing.md)
 - Troubleshooting: [`docs/troubleshooting.md`](docs/troubleshooting.md)
 
-## Project Policies
+## 📜 Project Policies
 
 - Contributing guide: [`CONTRIBUTING.md`](CONTRIBUTING.md)
 - Security policy: [`docs/security.md`](docs/security.md)
 - License: [`LICENSE`](LICENSE)
 
-## Acknowledgements
+## 🙏 Acknowledgements
 
 The native Swift appearance sync daemon's event listener architecture was heavily inspired by the approach used in [cormacrelf/dark-notify](https://github.com/cormacrelf/dark-notify).
 
