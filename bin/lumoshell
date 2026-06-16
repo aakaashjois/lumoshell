@@ -253,7 +253,13 @@ if (dict) {
 
   local light_profile dark_profile
   
-  cat <<'EOF' >&2
+  local agent_plist="${HOME}/Library/LaunchAgents/com.user.lumoshell-appearance-sync-agent.plist"
+  if [[ -f "$agent_plist" ]]; then
+    echo "Background agent is already setup." >&2
+    # Ensure it's up to date quietly, without alarming the user
+    "$SCRIPT_DIR/lumoshell-install" >/dev/null 2>&1 || true
+  else
+    cat <<'EOF' >&2
 
 Lumoshell Setup
 ---------------
@@ -263,9 +269,10 @@ Please accept any prompts to continue.
 
 EOF
 
-  if ! "$SCRIPT_DIR/lumoshell-install"; then
-    echo "Failed to install lumoshell background agent. Aborting setup." >&2
-    exit 1
+    if ! "$SCRIPT_DIR/lumoshell-install"; then
+      echo "Failed to install lumoshell background agent. Aborting setup." >&2
+      exit 1
+    fi
   fi
 
   echo "" >&2
