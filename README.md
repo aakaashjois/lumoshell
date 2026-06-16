@@ -14,11 +14,12 @@ Lumoshell effortlessly keeps your terminal perfectly in sync with macOS light an
 
 https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 
-## Quick Start
+## Quick Install
 
-You can either install Lumoshell manually using Homebrew, or you can simply provide this GitHub link to an AI agent and ask it to install and configure it for you.
+Simply provide this GitHub repository link to an AI agent and ask it to install and configure Lumoshell for you.
 
-**Manual Installation (Homebrew):**
+## Manual Install
+
 ```sh
 brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
 brew trust aakaashjois/lumoshell
