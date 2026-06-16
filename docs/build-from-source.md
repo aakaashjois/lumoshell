@@ -32,7 +32,7 @@ cp bin/lumoshell-uninstall /usr/local/bin/
 Enroll startup behavior:
 
 ```sh
-lumoshell install
+lumoshell setup
 ```
 
 ## Uninstall Manual Install

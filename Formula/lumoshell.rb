@@ -19,7 +19,7 @@ class Lumoshell < Formula
   end
 
   def post_install
-    ohai "Run `lumoshell install` manually to enroll startup and grant permissions."
+    ohai "Run `lumoshell setup` manually to enroll startup and grant permissions."
   end
 
   service do
@@ -30,13 +30,13 @@ class Lumoshell < Formula
 
   def caveats
     <<~EOS
-      Run `lumoshell install` after Homebrew installation to enroll startup setup.
+      Run `lumoshell setup` after Homebrew installation to enroll startup setup.
 
       Quick verify (recommended):
         lumoshell doctor
 
       Enroll/start the appearance sync agent:
-        lumoshell install
+        lumoshell setup
 
       Test a one-time apply immediately:
         lumoshell apply --dry-run

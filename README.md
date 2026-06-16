@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
 brew trust aakaashjois/lumoshell
 brew install lumoshell
-lumoshell install
+lumoshell setup
 ```
 
 ## At A Glance

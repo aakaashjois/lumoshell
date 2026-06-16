@@ -10,7 +10,6 @@ lumoshell <command> [options]
 - `lumoshell setup [--reset]`
 - `lumoshell status`
 - `lumoshell logs` (prints sync-agent logs from the last 1 hour)
-- `lumoshell install`
 - `lumoshell uninstall`
 - `lumoshell doctor`
 - `lumoshell version`
