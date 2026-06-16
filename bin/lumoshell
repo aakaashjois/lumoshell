@@ -348,7 +348,7 @@ if (dict) {
   printf "   │  ░░░░░░░░░░░░░░ │\n" >&2
   printf "   │░░░░░░░░░░░░░░░░│\n" >&2
   printf "   ╰────────────────╯\n" >&2
-  printf "    ✨ Lumoshell ✨  \n\n" >&2
+  printf "      Lumoshell      \n\n" >&2
 
   local agent_plist="${HOME}/Library/LaunchAgents/com.user.lumoshell-appearance-sync-agent.plist"
   if [[ -f "$agent_plist" ]]; then
