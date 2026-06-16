@@ -1,5 +1,6 @@
 <div align="center">
-  <h1>✨ Lumoshell ✨</h1>
+  <img src="assets/icon.svg" width="128" height="128" alt="Lumoshell Icon">
+  <h1>Lumoshell</h1>
   <p>
     <a href="https://github.com/aakaashjois/lumoshell/releases"><img src="https://badgen.net/github/release/aakaashjois/lumoshell" alt="Release"></a>
     <a href="https://github.com/aakaashjois/lumoshell/blob/main/LICENSE"><img src="https://badgen.net/badge/license/MIT/blue" alt="License: MIT"></a>

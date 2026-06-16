@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDFBFB"/>
+      <stop offset="50%" stop-color="#E2E2E2"/>
+      <stop offset="50.1%" stop-color="#2C3E50"/>
+      <stop offset="100%" stop-color="#000000"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="10" stdDeviation="15" flood-opacity="0.3"/>
+    </filter>
+  </defs>
+  <rect x="56" y="56" width="400" height="400" rx="40" fill="url(#bg-gradient)" filter="url(#shadow)"/>
+  <circle cx="104" cy="104" r="10" fill="#FF5F56"/>
+  <circle cx="144" cy="104" r="10" fill="#FFBD2E"/>
+  <circle cx="184" cy="104" r="10" fill="#27C93F"/>
+  <g transform="translate(113.5, -144)">
+    <polyline points="100,380 130,400 100,420" fill="none" stroke="black" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="145" y1="420" x2="185" y2="420" stroke="black" stroke-width="24" stroke-linecap="round"/>
+    <polyline points="100,380 130,400 100,420" fill="none" stroke="white" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="145" y1="420" x2="185" y2="420" stroke="white" stroke-width="16" stroke-linecap="round"/>
+  </g>
+</svg>
