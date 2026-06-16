@@ -337,6 +337,15 @@ if (dict) {
 
   local light_profile dark_profile
   
+  printf "\n" >&2
+  printf "   ╭──────────────────────╮\n" >&2
+  printf "   │ \033[31m●\033[0m \033[33m●\033[0m \033[32m●\033[0m                │\n" >&2
+  printf "   │                      │\n" >&2
+  printf "   │  >_                  │\n" >&2
+  printf "   │                      │\n" >&2
+  printf "   ╰──────────────────────╯\n" >&2
+  printf "       ✨ Lumoshell ✨       \n\n" >&2
+
   local agent_plist="${HOME}/Library/LaunchAgents/com.user.lumoshell-appearance-sync-agent.plist"
   if [[ -f "$agent_plist" ]]; then
     echo "Background agent is already setup." >&2
@@ -345,8 +354,6 @@ if (dict) {
   else
     cat <<'EOF' >&2
 
-Lumoshell Setup
----------------
 First, we need to install the background agent that syncs Terminal with macOS.
 You may be prompted to allow 'lumoshell-install' or 'sh' to manage your background items.
 Please accept any prompts to continue.
