@@ -2,10 +2,10 @@
   <h1>✨ Lumoshell ✨</h1>
   <p>
     <a href="https://github.com/aakaashjois/lumoshell/releases"><img src="https://badgen.net/github/release/aakaashjois/lumoshell" alt="Release"></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-    <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/platform-macOS-black" alt="macOS"></a>
-    <a href="https://github.com/aakaashjois/lumoshell"><img src="https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange" alt="Homebrew Tap"></a>
-    <a href="https://github.com/aakaashjois/lumoshell/actions"><img src="https://img.shields.io/github/actions/workflow/status/aakaashjois/lumoshell/release.yml?branch=main" alt="CI"></a>
+    <a href="LICENSE"><img src="https://badgen.net/badge/license/MIT/blue" alt="License: MIT"></a>
+    <a href="https://www.apple.com/macos/"><img src="https://badgen.net/badge/platform/macOS/black" alt="macOS"></a>
+    <a href="https://github.com/aakaashjois/lumoshell"><img src="https://badgen.net/badge/homebrew/aakaashjois%2Flumoshell/orange" alt="Homebrew Tap"></a>
+    <a href="https://github.com/aakaashjois/lumoshell/actions"><img src="https://badgen.net/github/checks/aakaashjois/lumoshell/main" alt="CI"></a>
   </p>
 
   <h3>The terminal appearance switcher that macOS is missing. 🌗</h3>
