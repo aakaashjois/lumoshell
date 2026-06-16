@@ -2,7 +2,7 @@
   <h1>✨ Lumoshell ✨</h1>
   <p>
     <a href="https://github.com/aakaashjois/lumoshell/releases"><img src="https://badgen.net/github/release/aakaashjois/lumoshell" alt="Release"></a>
-    <a href="LICENSE"><img src="https://badgen.net/badge/license/MIT/blue" alt="License: MIT"></a>
+    <a href="https://github.com/aakaashjois/lumoshell/blob/main/LICENSE"><img src="https://badgen.net/badge/license/MIT/blue" alt="License: MIT"></a>
     <a href="https://www.apple.com/macos/"><img src="https://badgen.net/badge/platform/macOS/black" alt="macOS"></a>
     <a href="https://github.com/aakaashjois/lumoshell"><img src="https://badgen.net/badge/homebrew/aakaashjois%2Flumoshell/orange" alt="Homebrew Tap"></a>
     <a href="https://github.com/aakaashjois/lumoshell/actions"><img src="https://badgen.net/github/checks/aakaashjois/lumoshell/main" alt="CI"></a>
