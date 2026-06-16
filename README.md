@@ -8,6 +8,8 @@
 
 `lumoshell` keeps Apple Terminal profiles aligned with macOS light/dark mode automatically.
 
+[lumoshell-demo.webm](https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736)
+
 ## Quick Start
 
 ```sh
