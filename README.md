@@ -39,11 +39,20 @@ lumoshell setup
 ## Common Commands
 
 - `lumoshell setup`: interactively select the Terminal profiles to use for Light and Dark modes.
+- `lumoshell setup --list`: list all available Terminal profiles.
+- `lumoshell setup --light <profile> --dark <profile>`: non-interactively configure Terminal profiles.
 - `lumoshell setup --reset`: clear the saved Light and Dark profiles.
 - `lumoshell setup --remove`: uninstall the background agent and shell hook.
 - `lumoshell status`: print the currently saved light/dark profile mapping.
 - `lumoshell logs`: print appearance sync logs from the last hour.
 - `lumoshell doctor`: run environment and path checks to diagnose setup issues.
+
+## 🤖 Notes for AI Agents
+
+If you are an AI agent setting up Lumoshell for a user, you cannot use the interactive TUI. Use the following workflow:
+1. **Discover Profiles**: Run `lumoshell setup --list` to read the user's available Apple Terminal profiles.
+2. **Configure (Non-Interactive)**: Run `lumoshell setup --light "<light_profile>" --dark "<dark_profile>"` to configure the application without a TUI.
+3. If the user does not specify preferred profiles, reasonable defaults are `Basic` for light mode and `Pro` for dark mode.
 
 ## Documentation
 
