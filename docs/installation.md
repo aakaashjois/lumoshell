@@ -24,7 +24,7 @@ brew install aakaashjois/lumoshell/lumoshell
 After Homebrew install, enroll startup behavior:
 
 ```sh
-lumoshell install
+lumoshell setup
 ```
 
 Service lifecycle commands:

@@ -34,6 +34,7 @@ lumoshell setup
 
 - `lumoshell setup`: interactively select the Terminal profiles to use for Light and Dark modes.
 - `lumoshell setup --reset`: clear the saved Light and Dark profiles.
+- `lumoshell setup --remove`: uninstall the background agent and shell hook.
 - `lumoshell status`: print the currently saved light/dark profile mapping.
 - `lumoshell logs`: print appearance sync logs from the last hour.
 - `lumoshell doctor`: run environment and path checks to diagnose setup issues.
