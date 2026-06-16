@@ -1,16 +1,21 @@
-# Lumoshell
+<div align="center">
+  <h1>✨ Lumoshell ✨</h1>
+  <p>
+    <a href="https://github.com/aakaashjois/lumoshell/releases"><img src="https://img.shields.io/github/v/release/aakaashjois/lumoshell?display_name=tag" alt="Release"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+    <a href="https://www.apple.com/macos/"><img src="https://img.shields.io/badge/platform-macOS-black" alt="macOS"></a>
+    <a href="https://github.com/aakaashjois/lumoshell"><img src="https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange" alt="Homebrew Tap"></a>
+    <a href="https://github.com/aakaashjois/lumoshell/actions"><img src="https://img.shields.io/github/actions/workflow/status/aakaashjois/lumoshell/release.yml?branch=main" alt="CI"></a>
+  </p>
 
-[![Release](https://img.shields.io/github/v/release/aakaashjois/lumoshell?display_name=tag)](https://github.com/aakaashjois/lumoshell/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![macOS](https://img.shields.io/badge/platform-macOS-black)](https://www.apple.com/macos/)
-[![Homebrew Tap](https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange)](https://github.com/aakaashjois/lumoshell)
-[![CI](https://img.shields.io/github/actions/workflow/status/aakaashjois/lumoshell/release.yml?branch=main)](https://github.com/aakaashjois/lumoshell/actions)
+  <h3>The terminal appearance switcher that macOS is missing. 🌗</h3>
+  
+  <p><em>No more squinting at a dark terminal in broad daylight, or burning your eyes on a glaring white screen at 2 AM.</em></p>
+</div>
 
-**The terminal appearance switcher that macOS is missing.**
+<br>
 
-Lumoshell seamlessly bridges the gap between your system's appearance and Apple Terminal. No more squinting at a dark terminal in broad daylight or burning your eyes on a glaring white screen at 2 AM.
-
-Lumoshell effortlessly keeps your terminal perfectly in sync with macOS light and dark modes, automatically.
+Lumoshell effortlessly bridges the gap between your system's appearance and Apple Terminal, keeping your active sessions perfectly in sync with macOS light and dark modes—instantly and automatically.
 
 https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 
