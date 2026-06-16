@@ -6,14 +6,19 @@
 [![Homebrew Tap](https://img.shields.io/badge/homebrew-aakaashjois%2Flumoshell-orange)](https://github.com/aakaashjois/lumoshell)
 [![CI](https://img.shields.io/github/actions/workflow/status/aakaashjois/lumoshell/release.yml?branch=main)](https://github.com/aakaashjois/lumoshell/actions)
 
-`lumoshell` keeps Apple Terminal profiles aligned with macOS light/dark mode automatically.
+**The terminal appearance switcher that macOS is missing.**
 
-[lumoshell-demo.webm](https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736)
+Lumoshell seamlessly bridges the gap between your system's appearance and Apple Terminal. No more squinting at a dark terminal in broad daylight or burning your eyes on a glaring white screen at 2 AM.
+
+Lumoshell effortlessly keeps your terminal perfectly in sync with macOS light and dark modes, automatically.
+
+https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 
 ## Quick Start
 
 ```sh
 brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell
+brew trust aakaashjois/lumoshell
 brew install lumoshell
 lumoshell install
 ```
