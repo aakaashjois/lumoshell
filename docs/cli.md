@@ -7,9 +7,8 @@ lumoshell <command> [options]
 ## Commands
 
 - `lumoshell apply [--dry-run] [--verbose]`
-- `lumoshell profile set <light|dark> "<profile-name>"`
-- `lumoshell profile show`
-- `lumoshell profile reset <light|dark|all>`
+- `lumoshell setup [--reset]`
+- `lumoshell status`
 - `lumoshell logs` (prints sync-agent logs from the last 1 hour)
 - `lumoshell install`
 - `lumoshell uninstall`

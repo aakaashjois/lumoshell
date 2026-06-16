@@ -44,15 +44,14 @@ class Lumoshell < Formula
       Then change macOS appearance (Light/Dark) to confirm automatic sync.
       If prompted, allow Terminal Automation permissions.
 
-      Set profiles from the CLI:
-        lumoshell profile set light "Basic"
-        lumoshell profile set dark "Pro"
+      Set profiles interactively from the CLI:
+        lumoshell setup
 
       Optional env overrides:
         export LUMOSHELL_PROFILE_LIGHT="Basic"
         export LUMOSHELL_PROFILE_DARK="Pro"
 
-      Env overrides take precedence over saved `lumoshell profile set` values.
+      Env overrides take precedence over saved profiles from `lumoshell setup`.
     EOS
   end
 

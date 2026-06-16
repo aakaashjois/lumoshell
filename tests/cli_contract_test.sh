@@ -22,7 +22,8 @@ assert_contains() {
 echo "[cli_contract_test] help surface"
 help_output="$("$CLI" help)"
 assert_contains "$help_output" "apply [--dry-run] [--verbose]" "expected apply command in help output"
-assert_contains "$help_output" "profile show" "expected profile show in help output"
+assert_contains "$help_output" "status" "expected status in help output"
+assert_contains "$help_output" "setup [--reset]" "expected setup in help output"
 assert_contains "$help_output" "logs" "expected logs command in help output"
 assert_contains "$help_output" "doctor" "expected doctor command in help output"
 
@@ -35,9 +36,9 @@ if "$CLI" apply --reason smoke-test >/dev/null 2>&1; then
   fail "apply should reject removed --reason flag"
 fi
 
-echo "[cli_contract_test] profile show arity validation"
-if "$CLI" profile show extra >/dev/null 2>&1; then
-  fail "profile show should reject unexpected positional args"
+echo "[cli_contract_test] status arity validation"
+if "$CLI" status extra >/dev/null 2>&1; then
+  fail "status should reject unexpected positional args"
 fi
 
 echo "[cli_contract_test] formula caveat drift"

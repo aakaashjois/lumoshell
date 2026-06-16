@@ -32,9 +32,9 @@ lumoshell install
 
 ## Common Commands
 
-- `lumoshell profile set light "Basic"`: set the profile to use when macOS is in light mode.
-- `lumoshell profile set dark "Pro"`: set the profile to use when macOS is in dark mode.
-- `lumoshell profile show`: print the currently saved light/dark profile mapping.
+- `lumoshell setup`: interactively select the Terminal profiles to use for Light and Dark modes.
+- `lumoshell setup --reset`: clear the saved Light and Dark profiles.
+- `lumoshell status`: print the currently saved light/dark profile mapping.
 - `lumoshell logs`: print appearance sync logs from the last hour.
 - `lumoshell doctor`: run environment and path checks to diagnose setup issues.
 

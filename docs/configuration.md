@@ -2,11 +2,10 @@
 
 ## Set Profiles
 
-Set profiles with commands (recommended):
+Set profiles interactively with the `setup` command (recommended):
 
 ```sh
-lumoshell profile set light "Basic"
-lumoshell profile set dark "Pro"
+lumoshell setup
 ```
 
 Defaults:
@@ -17,10 +16,8 @@ Defaults:
 Inspect/reset saved profile configuration:
 
 ```sh
-lumoshell profile show
-lumoshell profile reset light
-lumoshell profile reset dark
-lumoshell profile reset all
+lumoshell status
+lumoshell setup --reset
 ```
 
 ## Environment Variable Overrides (optional)
