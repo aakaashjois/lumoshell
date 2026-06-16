@@ -63,11 +63,9 @@ Usage:
 
 Commands:
   apply [--dry-run] [--verbose]
-  setup [--reset]
+  setup [--reset | --remove | --list | --light <profile> | --dark <profile>]
   status
   logs
-  install
-  uninstall
   doctor
   version
   help
@@ -212,17 +210,52 @@ interactive_select() {
 }
 
 setup() {
-  if [[ "${1:-}" == "--reset" ]]; then
-    defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
-    echo "Reset all profile overrides."
-    echo "Applying updated profile configuration..."
-    exec "$SCRIPT_DIR/lumoshell-apply"
-  elif [[ -n "${1:-}" ]]; then
-    echo "lumoshell setup takes only the --reset option." >&2
-    exit 1
-  fi
+  local list_profiles=0
+  local arg_light=""
+  local arg_dark=""
 
-  echo "Fetching available Terminal profiles..."
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --reset)
+        defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
+        echo "Reset all profile overrides."
+        echo "Applying updated profile configuration..."
+        exec "$SCRIPT_DIR/lumoshell-apply"
+        ;;
+      --remove)
+        exec "$SCRIPT_DIR/lumoshell-uninstall"
+        ;;
+      --list)
+        list_profiles=1
+        shift
+        ;;
+      --light)
+        if [[ $# -lt 2 ]]; then
+          echo "Error: --light requires a profile name." >&2
+          exit 1
+        fi
+        arg_light="$2"
+        shift 2
+        ;;
+      --dark)
+        if [[ $# -lt 2 ]]; then
+          echo "Error: --dark requires a profile name." >&2
+          exit 1
+        fi
+        arg_dark="$2"
+        shift 2
+        ;;
+      *)
+        echo "Unknown option: $1" >&2
+        echo "Usage: lumoshell setup [--reset | --remove | --list | --light <profile> | --dark <profile>]" >&2
+        exit 1
+        ;;
+    esac
+  done
+
+  if [[ "$list_profiles" -eq 0 && -z "$arg_light" && -z "$arg_dark" ]]; then
+    echo "Fetching available Terminal profiles..."
+  fi
   local profiles
   # shellcheck disable=SC2016
   local jxa_script='
@@ -248,16 +281,86 @@ if (dict) {
     exit 1
   fi
 
+  if [[ "$list_profiles" -eq 1 ]]; then
+    for p in "${profiles[@]}"; do
+      echo "$p"
+    done
+    exit 0
+  fi
+
+  if [[ -n "$arg_light" || -n "$arg_dark" ]]; then
+    for p in "$arg_light" "$arg_dark"; do
+      if [[ -n "$p" ]]; then
+        local found=0
+        for valid in "${profiles[@]}"; do
+          if [[ "$p" == "$valid" ]]; then
+            found=1
+            break
+          fi
+        done
+        if [[ "$found" -eq 0 ]]; then
+          echo "Error: Profile '$p' not found." >&2
+          echo "Available profiles:" >&2
+          for valid in "${profiles[@]}"; do
+            echo "  $valid" >&2
+          done
+          exit 1
+        fi
+      fi
+    done
+
+    local agent_plist="${HOME}/Library/LaunchAgents/com.user.lumoshell-appearance-sync-agent.plist"
+    if [[ ! -f "$agent_plist" ]]; then
+      if ! "$SCRIPT_DIR/lumoshell-install" >/dev/null 2>&1; then
+        echo "Failed to install lumoshell background agent." >&2
+        exit 1
+      fi
+    else
+      "$SCRIPT_DIR/lumoshell-install" >/dev/null 2>&1 || true
+    fi
+
+    if [[ -n "$arg_light" ]]; then
+      defaults write "$profile_store_domain" "$(profile_key_for_mode "light")" -string "$arg_light"
+      echo "Set light profile to \"$arg_light\"."
+    fi
+    if [[ -n "$arg_dark" ]]; then
+      defaults write "$profile_store_domain" "$(profile_key_for_mode "dark")" -string "$arg_dark"
+      echo "Set dark profile to \"$arg_dark\"."
+    fi
+    echo "Applying updated profile configuration..."
+    exec "$SCRIPT_DIR/lumoshell-apply"
+  fi
+
   local current_light current_dark
   current_light="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null || echo "Basic")"
   current_dark="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null || echo "Pro")"
 
   local light_profile dark_profile
   
-  cat <<'EOF' >&2
+  local agent_plist="${HOME}/Library/LaunchAgents/com.user.lumoshell-appearance-sync-agent.plist"
+  if [[ -f "$agent_plist" ]]; then
+    echo "Background agent is already setup." >&2
+    # Ensure it's up to date quietly, without alarming the user
+    "$SCRIPT_DIR/lumoshell-install" >/dev/null 2>&1 || true
+  else
+    cat <<'EOF' >&2
 
 Lumoshell Setup
 ---------------
+First, we need to install the background agent that syncs Terminal with macOS.
+You may be prompted to allow 'lumoshell-install' or 'sh' to manage your background items.
+Please accept any prompts to continue.
+
+EOF
+
+    if ! "$SCRIPT_DIR/lumoshell-install"; then
+      echo "Failed to install lumoshell background agent. Aborting setup." >&2
+      exit 1
+    fi
+  fi
+
+  echo "" >&2
+  cat <<'EOF' >&2
 This setup will configure which Terminal profiles to use when macOS switches
 between Light and Dark appearance.
 
@@ -342,9 +445,6 @@ case "$cmd" in
     ;;
   install)
     exec "$SCRIPT_DIR/lumoshell-install" "$@"
-    ;;
-  uninstall)
-    exec "$SCRIPT_DIR/lumoshell-uninstall" "$@"
     ;;
   logs)
     show_logs "${1:-}"

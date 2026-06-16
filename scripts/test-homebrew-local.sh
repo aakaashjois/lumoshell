@@ -26,8 +26,8 @@ cleanup_tmp_files() {
 
 ensure_launch_agent_file() {
   if [[ ! -f "$LAUNCH_AGENT_PATH" ]]; then
-    echo "LaunchAgent missing after brew install; attempting fallback: lumoshell install"
-    lumoshell install
+    echo "LaunchAgent missing after brew install; attempting fallback: lumoshell setup"
+    lumoshell setup
   fi
 
   if [[ -f "$LAUNCH_AGENT_PATH" ]]; then
@@ -157,7 +157,7 @@ if launchctl print "gui/$(id -u)/$LABEL" >/dev/null 2>&1; then
   echo "LaunchAgent is loaded: $LABEL"
 else
   echo "LaunchAgent not loaded: $LABEL" >&2
-  echo "Try: lumoshell install" >&2
+  echo "Try: lumoshell setup" >&2
   exit 1
 fi
 
@@ -166,7 +166,7 @@ lumoshell apply --dry-run
 
 if [[ "$CLEANUP" -eq 1 ]]; then
   echo "[cleanup] uninstalling"
-  lumoshell uninstall || true
+  lumoshell setup --remove || true
   brew uninstall --formula lumoshell || true
   if [[ "$TAP_CREATED" -eq 1 ]]; then
     brew untap "$TAP_NAME" || true

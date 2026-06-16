@@ -8,6 +8,16 @@ Set profiles interactively with the `setup` command (recommended):
 lumoshell setup
 ```
 
+You can also use non-interactive flags for automation or AI agents:
+
+```sh
+# List available profiles
+lumoshell setup --list
+
+# Set specific profiles directly
+lumoshell setup --light "Basic" --dark "Pro"
+```
+
 Defaults:
 
 - Light mode profile: `Basic`
