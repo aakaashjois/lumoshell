@@ -18,7 +18,7 @@ https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
 
 Simply provide this GitHub repository link to an AI agent and ask it to install and configure Lumoshell for you. For example, you can use the following prompt:
 
-> "Please install the mac terminal theme from https://github.com/aakaashjois/lumoshell and set it up for me."
+> "install https://github.com/aakaashjois/lumoshell using brew and set it up for me."
 
 ## Manual Install
 
