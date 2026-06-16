@@ -128,6 +128,10 @@ if [[ "$REINSTALL" -eq 1 ]]; then
   printf "%s  %s\n" "$LOCAL_ARCHIVE_SHA" "lumoshell-darwin-universal.tar.gz" > "$LOCAL_RELEASE_DIR/SHA256SUMS.txt"
   LOCAL_RELEASE_BASE_URL="file://$LOCAL_RELEASE_DIR"
 
+  # Inject local URL and SHA into the tap formula so it doesn't download from github!
+  sed -i '' "s|url \".*\"|url \"$LOCAL_RELEASE_BASE_URL/lumoshell-darwin-universal.tar.gz\"|" "$TAP_REPO/Formula/lumoshell.rb"
+  sed -i '' "s|sha256 \".*\"|sha256 \"$LOCAL_ARCHIVE_SHA\"\n  version \"0.2.1\"|" "$TAP_REPO/Formula/lumoshell.rb"
+
   echo "[3/7] uninstall existing formula (if present)"
   brew uninstall --formula lumoshell >/dev/null 2>&1 || true
 

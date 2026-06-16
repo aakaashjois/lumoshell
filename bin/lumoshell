@@ -9,11 +9,6 @@ resolve_realpath() {
     return
   fi
 
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$path"
-    return
-  fi
-
   (
     cd -- "$(dirname -- "$path")"
     printf '%s/%s\n' "$(pwd -P)" "$(basename -- "$path")"
@@ -68,9 +63,8 @@ Usage:
 
 Commands:
   apply [--dry-run] [--verbose]
-  profile set <light|dark> <profile-name>
-  profile show
-  profile reset <light|dark|all>
+  setup [--reset]
+  status
   logs
   install
   uninstall
@@ -80,17 +74,9 @@ Commands:
 EOF
 }
 
-profile_usage() {
-  cat <<'EOF'
-Usage:
-  lumoshell profile set <light|dark> <profile-name>
-  lumoshell profile show
-  lumoshell profile reset <light|dark|all>
-EOF
-}
-
 profile_store_domain="com.user.lumoshell"
 agent_log_path="${HOME}/Library/Logs/lumoshell/appearance-sync-agent.log"
+
 profile_key_for_mode() {
   case "$1" in
     light) echo "LightProfile" ;;
@@ -102,25 +88,9 @@ profile_key_for_mode() {
   esac
 }
 
-profile_set() {
-  local mode="${1:-}"
-  local profile_name="${2:-}"
-  if [[ -z "$mode" || -z "$profile_name" || -n "${3:-}" ]]; then
-    profile_usage
-    exit 1
-  fi
-
-  local key
-  key="$(profile_key_for_mode "$mode")"
-  defaults write "$profile_store_domain" "$key" -string "$profile_name"
-  echo "Set $mode profile to \"$profile_name\"."
-  echo "Applying updated profile configuration..."
-  exec "$SCRIPT_DIR/lumoshell-apply"
-}
-
-profile_show() {
+status() {
   if [[ -n "${1:-}" ]]; then
-    profile_usage
+    echo "lumoshell status does not accept any arguments." >&2
     exit 1
   fi
 
@@ -141,30 +111,176 @@ profile_show() {
   fi
 }
 
-profile_reset() {
-  local target="${1:-}"
-  if [[ -z "$target" || -n "${2:-}" ]]; then
-    profile_usage
+interactive_select() {
+  local prompt="$1"
+  local default_val="$2"
+  shift 2
+  local options=("$@")
+  local selected=0
+  local key
+  local input=""
+  local last_previewed=""
+  local original_profile=""
+
+  original_profile="$(osascript -e 'tell application "Terminal" to try' -e 'get name of current settings of selected tab of front window' -e 'end try' 2>/dev/null || true)"
+
+  for i in "${!options[@]}"; do
+    if [[ "${options[$i]}" == "$default_val" ]]; then
+      selected=$i
+      break
+    fi
+  done
+
+  tput civis >&2 || true
+  trap '
+    tput cnorm >&2 2>/dev/null || true;
+    if [[ -n "${PREVIEW_PID:-}" ]] && kill -0 "$PREVIEW_PID" 2>/dev/null; then
+      kill "$PREVIEW_PID" 2>/dev/null || true;
+    fi;
+    if [[ -n "${original_profile:-}" ]]; then
+      osascript -e "tell application \"Terminal\" to try" -e "set current settings of selected tab of front window to settings set \"$original_profile\"" -e "end try" >/dev/null 2>&1;
+    fi;
+    exit 1
+  ' INT
+
+  echo "$prompt" >&2
+  echo "----------------------------------------" >&2
+  for i in "${!options[@]}"; do
+    echo "" >&2
+  done
+
+  while true; do
+    tput cuu ${#options[@]} >&2 || true
+    
+    local display_idx=1
+    for i in "${!options[@]}"; do
+      if [[ $i -eq $selected ]]; then
+        printf "\r\033[K> %d) %s\n" "$display_idx" "${options[$i]}" >&2
+      else
+        printf "\r\033[K  %d) %s\n" "$display_idx" "${options[$i]}" >&2
+      fi
+      ((display_idx++))
+    done
+
+    if [[ "${options[$selected]}" != "${last_previewed:-}" ]]; then
+      last_previewed="${options[$selected]}"
+      if [[ -n "${PREVIEW_PID:-}" ]] && kill -0 "$PREVIEW_PID" 2>/dev/null; then
+        kill "$PREVIEW_PID" 2>/dev/null || true
+      fi
+      osascript -e "tell application \"Terminal\" to try" -e "set current settings of selected tab of front window to settings set \"$last_previewed\"" -e "end try" >/dev/null 2>&1 &
+      PREVIEW_PID=$!
+    fi
+
+    read -rsn1 key </dev/tty
+    if [[ $key == $'\e' ]]; then
+      read -rsn1 -t 0.05 key </dev/tty || true
+      if [[ $key == '[' ]]; then
+        read -rsn1 -t 0.05 key </dev/tty || true
+        if [[ $key == 'A' ]]; then # Up
+          ((selected--))
+          if [[ $selected -lt 0 ]]; then selected=$((${#options[@]}-1)); fi
+          input=""
+        elif [[ $key == 'B' ]]; then # Down
+          ((selected++))
+          if [[ $selected -ge ${#options[@]} ]]; then selected=0; fi
+          input=""
+        fi
+      fi
+    elif [[ $key == '' || $key == ' ' ]]; then # Enter or Space
+      break
+    elif [[ "$key" =~ ^[0-9]$ ]]; then
+      input="$input$key"
+      local idx=$((input - 1))
+      if [[ $idx -ge 0 && $idx -lt ${#options[@]} ]]; then
+        selected=$idx
+      else
+        input="$key" 
+        idx=$((input - 1))
+        if [[ $idx -ge 0 && $idx -lt ${#options[@]} ]]; then
+          selected=$idx
+        fi
+      fi
+    else
+      input=""
+    fi
+  done
+
+  trap - INT
+  tput cnorm >&2 || true
+  
+  echo "${options[$selected]}"
+}
+
+setup() {
+  if [[ "${1:-}" == "--reset" ]]; then
+    defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
+    echo "Reset all profile overrides."
+    echo "Applying updated profile configuration..."
+    exec "$SCRIPT_DIR/lumoshell-apply"
+  elif [[ -n "${1:-}" ]]; then
+    echo "lumoshell setup takes only the --reset option." >&2
     exit 1
   fi
 
-  case "$target" in
-    light|dark)
-      local key
-      key="$(profile_key_for_mode "$target")"
-      defaults delete "$profile_store_domain" "$key" >/dev/null 2>&1 || true
-      echo "Reset $target profile override."
-      ;;
-    all)
-      defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
-      echo "Reset all profile overrides."
-      ;;
-    *)
-      echo "Invalid reset target: $target (expected: light, dark, or all)" >&2
-      exit 1
-      ;;
-  esac
+  echo "Fetching available Terminal profiles..."
+  local profiles
+  # shellcheck disable=SC2016
+  local jxa_script='
+ObjC.import("Foundation");
+var path = $( "~/Library/Preferences/com.apple.Terminal.plist" ).stringByExpandingTildeInPath;
+var dict = $.NSDictionary.dictionaryWithContentsOfFile(path);
+if (dict) {
+  var settings = dict.objectForKey("Window Settings");
+  if (settings) {
+    var keys = settings.allKeys;
+    var out = [];
+    for (var i = 0; i < keys.count; i++) {
+        out.push(keys.objectAtIndex(i).js);
+    }
+    out.join("\n");
+  }
+}
+'
+  IFS=$'\n' read -r -d '' -a profiles < <(osascript -l JavaScript -e "$jxa_script" 2>/dev/null && printf '\0')
 
+  if [[ ${#profiles[@]} -eq 0 ]]; then
+    echo "Failed to retrieve terminal profiles or none found." >&2
+    exit 1
+  fi
+
+  local current_light current_dark
+  current_light="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null || echo "Basic")"
+  current_dark="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null || echo "Pro")"
+
+  local light_profile dark_profile
+  
+  cat <<'EOF' >&2
+
+Lumoshell Setup
+---------------
+This setup will configure which Terminal profiles to use when macOS switches
+between Light and Dark appearance.
+
+You will first select your preferred profile for Light mode, followed by your
+preferred profile for Dark mode. As you navigate the options, your current
+Terminal tab will live-preview the selected theme.
+
+(Hint: You can create or customize themes by opening Terminal -> Settings -> Profiles)
+
+EOF
+
+  light_profile="$(interactive_select "Select the Terminal profile to use for Light mode:" "$current_light" "${profiles[@]}")"
+  echo "" >&2
+  dark_profile="$(interactive_select "Select the Terminal profile to use for Dark mode:" "$current_dark" "${profiles[@]}")"
+
+  local light_key dark_key
+  light_key="$(profile_key_for_mode "light")"
+  dark_key="$(profile_key_for_mode "dark")"
+
+  defaults write "$profile_store_domain" "$light_key" -string "$light_profile"
+  defaults write "$profile_store_domain" "$dark_key" -string "$dark_profile"
+
+  echo "Set light profile to \"$light_profile\" and dark profile to \"$dark_profile\"."
   echo "Applying updated profile configuration..."
   exec "$SCRIPT_DIR/lumoshell-apply"
 }
@@ -218,29 +334,11 @@ case "$cmd" in
     validate_apply_args "$@"
     exec "$SCRIPT_DIR/lumoshell-apply" "$@"
     ;;
-  profile)
-    subcmd="${1:-}"
-    if [[ -z "$subcmd" || "$subcmd" == "help" || "$subcmd" == "-h" || "$subcmd" == "--help" ]]; then
-      profile_usage
-      exit 0
-    fi
-    shift
-    case "$subcmd" in
-      set)
-        profile_set "${1:-}" "${2:-}"
-        ;;
-      show)
-        profile_show "$@"
-        ;;
-      reset)
-        profile_reset "${1:-}"
-        ;;
-      *)
-        echo "Unknown profile command: $subcmd" >&2
-        profile_usage
-        exit 1
-        ;;
-    esac
+  status)
+    status "$@"
+    ;;
+  setup)
+    setup "$@"
     ;;
   install)
     exec "$SCRIPT_DIR/lumoshell-install" "$@"
