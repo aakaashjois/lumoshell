@@ -1,8 +1,8 @@
 class Lumoshell < Formula
   desc "Auto-sync Apple Terminal profiles with macOS appearance"
   homepage "https://github.com/aakaashjois/lumoshell"
-  url "https://github.com/aakaashjois/lumoshell/releases/download/v0.2.4/lumoshell-darwin-universal.tar.gz"
-  sha256 "90b62f883373e0f53f2cca9d2aa58806375a6f5a9fba11e17cea5d42024c5f11"
+  url "https://github.com/aakaashjois/lumoshell/releases/download/v0.2.6/lumoshell-darwin-universal.tar.gz"
+  sha256 "df4f4948a16effb8f96b30b72a734923fa0c12aceafd47b4e0fc6d1d25606251"
   license "MIT"
 
   head "https://github.com/aakaashjois/lumoshell.git", branch: "main"
