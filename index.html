@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumoshell — Apple Terminal Appearance Switcher</title>
+    <meta name="description" content="Lumoshell effortlessly bridges the gap between your system's appearance and Apple Terminal, keeping your active sessions perfectly in sync with macOS light and dark modes.">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+
+    <style>
+        /* CSS Resets & Variables */
+        :root {
+            --bg-color: #FDFBFB;
+            --text-primary: #111111;
+            --text-secondary: #555555;
+            --border-color: #EAEAEA;
+            --card-bg: #FFFFFF;
+            
+            /* Typography Architecture */
+            --font-sans: 'SF Pro Display', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+            --font-serif: 'Lyon Text', 'Newsreader', 'Playfair Display', 'Instrument Serif', serif;
+            --font-mono: 'Geist Mono', 'SF Mono', 'JetBrains Mono', monospace;
+            
+            /* Motion Dynamics */
+            --ease-custom: cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        .dark-theme {
+            --bg-color: #2C3E50;
+            --text-primary: #F7F6F3;
+            --text-secondary: #D1D1D6;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --card-bg: rgba(0, 0, 0, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: #FBFBFA; /* fallback */
+            line-height: 1.6;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Ambient Viewport Background matching Icon */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, #FDFBFB 0%, #E2E2E2 100%);
+            pointer-events: none;
+            z-index: -1;
+            transition: background 0.5s var(--ease-custom);
+        }
+
+        .dark-theme::before {
+            background: linear-gradient(135deg, #2C3E50 0%, #000000 100%);
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            color: var(--text-primary);
+            letter-spacing: -0.03em;
+            line-height: 1.05;
+            font-family: var(--font-sans);
+        }
+
+        h1 {
+            font-size: clamp(3.5rem, 8vw, 6.5rem);
+            margin-bottom: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+        }
+
+        p.lead {
+            font-size: clamp(1.125rem, 2vw, 1.35rem);
+            color: var(--text-primary);
+            max-width: 640px;
+            margin: 0 auto 3rem;
+            font-weight: 500;
+        }
+
+        /* Layout & Spatial Rhythm */
+        section {
+            padding: 8rem 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        /* Floating Nav (Fluid Island) */
+        nav {
+            position: sticky;
+            top: 1.5rem;
+            margin: 0 auto;
+            width: max-content;
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 9999px;
+            padding: 0.75rem 1.5rem;
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.02);
+            opacity: 0;
+            transform: translateY(-20px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.5s var(--ease-custom);
+        }
+
+        body.nav-visible nav {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+        }
+
+        .dark-theme nav { 
+            background: rgba(17, 17, 17, 0.6); 
+            border-color: rgba(255, 255, 255, 0.06); 
+        }
+
+        .nav-brand-group {
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            max-width: 0;
+            min-width: 0;
+            overflow: hidden;
+            transition: opacity 0.5s var(--ease-custom), max-width 0.5s var(--ease-custom);
+            white-space: nowrap;
+            gap: 0;
+        }
+        body.nav-brand-visible .nav-brand-group {
+            opacity: 1;
+            max-width: 300px;
+        }
+        body.nav-brand-visible .nav-icon {
+            margin-right: 0.75rem;
+        }
+
+        .nav-theme-toggle {
+            opacity: 0;
+            max-width: 0;
+            min-width: 0;
+            overflow: hidden;
+            transition: opacity 0.5s var(--ease-custom), max-width 0.5s var(--ease-custom), margin 0.5s var(--ease-custom);
+            margin-left: 0;
+        }
+        body.nav-toggle-visible .nav-theme-toggle {
+            opacity: 1;
+            max-width: 400px;
+            margin-left: 1.5rem;
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            display: inline-flex;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 9999px;
+            padding: 0.25rem;
+            gap: 0.25rem;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            transition: all 0.5s var(--ease-custom);
+        }
+        
+        .theme-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            background: transparent;
+            border: none;
+            border-radius: 9999px;
+            padding: 0.4rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            font-family: var(--font-sans);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s var(--ease-custom);
+        }
+        
+        .theme-btn:hover {
+            color: var(--text-primary);
+        }
+        
+        .theme-btn.active {
+            background: var(--text-primary);
+            color: var(--bg-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .dark-theme .theme-btn.active {
+            background: #FFFFFF;
+            color: #111111;
+        }
+
+        /* Global Theme Transition Class */
+        .theme-transition,
+        .theme-transition * {
+            transition: background-color 0.5s var(--ease-custom), color 0.5s var(--ease-custom), border-color 0.5s var(--ease-custom) !important;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            background: var(--text-primary);
+            color: #fff;
+            border-radius: 9999px;
+            text-decoration: none;
+            transition: all 0.4s var(--ease-custom);
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .dark-theme .btn { 
+            background: #FFFFFF; 
+            color: #111111; 
+        }
+
+        /* Double-Bezel Architecture */
+        .double-bezel {
+            background: rgba(0, 0, 0, 0.02);
+            padding: 0.5rem;
+            border-radius: 2rem;
+            border: 1px solid var(--border-color);
+            transition: transform 0.4s var(--ease-custom), box-shadow 0.4s var(--ease-custom);
+            height: 100%;
+        }
+
+        .dark-theme .double-bezel { background: rgba(255, 255, 255, 0.02); }
+
+        .double-bezel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.04);
+        }
+
+        .double-bezel:hover .bento-icon {
+            transform: rotate(0deg) scale(1.05) !important;
+        }
+
+        .double-bezel-inner {
+            background: var(--card-bg);
+            border-radius: calc(2rem - 0.5rem);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.8), 0 2px 8px rgba(0,0,0,0.02);
+            border: 1px solid var(--border-color);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+
+        .dark-theme .double-bezel-inner { 
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 2px 8px rgba(0,0,0,0.4); 
+        }
+
+        /* Faux-OS Window Chrome */
+        .mac-window {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.04);
+        }
+
+        .mac-header {
+            display: flex;
+            gap: 6px;
+            padding: 12px 16px;
+            background: #F9F9F8;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .mac-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #EAEAEA;
+        }
+
+        .mac-dot:nth-child(1) { background: #FF5F56; }
+        .mac-dot:nth-child(2) { background: #FFBD2E; }
+        .mac-dot:nth-child(3) { background: #27C93F; }
+
+        /* Asymmetrical Bento Grid */
+        .bento-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .bento-item {
+            grid-column: span 12;
+            display: flex;
+        }
+
+        .bento-item .double-bezel {
+            width: 100%;
+        }
+
+        @media (min-width: 768px) {
+            .bento-item.large { grid-column: span 8; }
+            .bento-item.small { grid-column: span 4; }
+        }
+
+        /* Hero Media Grid */
+        .hero-media-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            width: 100%;
+            max-width: 760px;
+            margin: 0 auto;
+            text-align: left;
+        }
+
+        @media (max-width: 767px) {
+            section {
+                padding: 5rem 1rem;
+            }
+            .double-bezel-inner {
+                padding: 2rem !important;
+            }
+            .double-bezel:hover {
+                transform: none;
+                box-shadow: none;
+            }
+        }
+
+        /* Typography Tags & Badges */
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-weight: 600;
+            width: max-content;
+            margin-bottom: 0.85rem;
+        }
+
+        .dark-theme .badge { 
+            background: rgba(255, 255, 255, 0.1) !important; 
+            color: #EAEAEA !important; 
+        }
+
+        /* Mono Elements */
+        kbd, code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+        }
+
+        [data-prefix]::before {
+            content: attr(data-prefix) " ";
+            user-select: none;
+            -webkit-user-select: none;
+            color: #787774;
+            display: inline-block;
+            width: 1.25rem;
+            text-align: right;
+            margin-right: 0.5rem;
+        }
+        .prompt-prefix[data-prefix]::before {
+            color: #1F6C9F;
+            font-weight: 600;
+            width: auto;
+            text-align: left;
+        }
+        .dark-theme .prompt-prefix[data-prefix]::before {
+            color: #34C759;
+        }
+        
+        .copy-btn {
+            position: absolute; 
+            top: 1rem; 
+            right: 1rem; 
+            padding: 0.4rem 0.5rem; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            background: rgba(255,255,255,0.05); 
+            color: #fff; 
+            border: 1px solid rgba(255,255,255,0.05); 
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-1px);
+        }
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .terminal-block {
+            background: #111111;
+            color: #F7F6F3;
+            padding: 1.5rem;
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            overflow-x: auto;
+            margin-top: 1.5rem;
+            line-height: 1.8;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+
+        .terminal-block code {
+            color: #EAEAEA;
+        }
+
+        .terminal-block .dim {
+            color: #787774;
+            user-select: none;
+        }
+
+        /* Brand Merge Animation */
+        .nav-brand-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-right: 0.75rem;
+        }
+
+        .nav-brand {
+            display: block;
+            white-space: nowrap;
+        }
+
+        .hero-brand {
+            transition: opacity 0.5s var(--ease-custom), transform 0.5s var(--ease-custom);
+            will-change: transform, opacity;
+            margin-bottom: 1rem;
+        }
+
+        body.merged .hero-brand {
+            opacity: 0;
+            transform: translateY(-40px) scale(0.95);
+            pointer-events: none;
+        }
+
+        /* Scroll Entry Motion Choreography */
+        .reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            filter: blur(4px);
+            transition: all 0.9s var(--ease-custom);
+            will-change: transform, opacity;
+        }
+
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+            filter: blur(0);
+        }
+
+        .delay-100 { transition-delay: 100ms; }
+        .delay-200 { transition-delay: 200ms; }
+        .delay-300 { transition-delay: 300ms; }
+        
+        /* Hero Specific */
+        .hero {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .hero-brand-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            cursor: pointer;
+        }
+
+        .hero-app-icon {
+            width: 120px; 
+            height: 120px; 
+            border-radius: 28px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+            margin-bottom: -70px; /* Pull title over it, so it peeks slightly */
+            z-index: 1; 
+            transition: transform 0.6s var(--ease-custom), filter 0.6s var(--ease-custom);
+            will-change: transform;
+        }
+
+        .hero-brand-container:hover .hero-app-icon {
+            transform: translateY(-60px) rotate(-4deg) scale(1.05);
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15));
+        }
+
+        .hero-brand {
+            font-family: 'Instrument Serif', serif; 
+            font-size: clamp(5rem, 14vw, 10rem); 
+            font-weight: 400; 
+            letter-spacing: -0.02em; 
+            line-height: 1; 
+            color: var(--text-primary); 
+            margin-bottom: 0; 
+            position: relative; 
+            z-index: 2;
+            text-shadow: 0 4px 20px var(--bg-color); /* Separates it from the icon behind */
+        }
+
+        .dark-theme .hero-brand {
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 4rem 2rem;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        
+        /* Interactive Terminal Styling */
+        .interactive-terminal {
+            background: #FFFFFF;
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            color: #111111;
+        }
+        .dark-theme .interactive-terminal {
+            background: rgba(0, 0, 0, 0.4);
+            color: #FFFFFF;
+        }
+        .interactive-terminal .mac-header {
+            position: relative;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        .dark-theme .interactive-terminal .mac-header {
+            background: rgba(255, 255, 255, 0.05);
+            border-bottom-color: rgba(255, 255, 255, 0.1);
+        }
+        .mac-title {
+            position: absolute;
+            left: 0; right: 0;
+            text-align: center;
+            font-size: 0.75rem;
+            font-family: var(--font-sans);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        .terminal-body {
+            padding: 3rem 2rem;
+            min-height: 280px;
+            text-align: left;
+            --term-text-secondary: #555555;
+        }
+        .dark-theme .terminal-body {
+            --term-text-secondary: rgba(255, 255, 255, 0.5);
+        }
+        .prompt {
+            color: #1F6C9F;
+            font-weight: 600;
+        }
+        .dark-theme .prompt {
+            color: #34C759;
+        }
+        .cursor {
+            display: inline-block;
+            width: 0.6em;
+            height: 1.1em;
+            background: #111111;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+        .dark-theme .cursor { background: #FFFFFF; }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .video-container {
+            position: relative;
+            cursor: pointer;
+        }
+        .play-pause-btn {
+            position: absolute;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s var(--ease-custom);
+            z-index: 10;
+        }
+        .video-container:hover .play-pause-btn {
+            background: rgba(0, 0, 0, 0.7);
+            transform: scale(1.05);
+        }
+        .play-pause-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="page-content-inner">
+        
+        <!-- Floating Pill Nav -->
+        <nav>
+            <div class="nav-brand-group">
+                <img class="nav-icon" src="assets/icon.svg" alt="Lumoshell Icon">
+                <a href="#" class="nav-brand" style="font-family: 'Instrument Serif', serif; font-size: 1.5rem; color: var(--text-primary); font-weight: 400; letter-spacing: -0.01em; text-decoration: none; line-height: 1;"><span style="font-style: italic; padding-right: 0.05em;">Lumo</span>shell</a>
+            </div>
+            
+            <div class="nav-theme-toggle">
+                <div class="theme-toggle" aria-label="Theme Toggle">
+                    <button class="theme-btn" data-theme="light" aria-label="Light Theme">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                        <span>Light</span>
+                    </button>
+                    <button class="theme-btn active" data-theme="auto" aria-label="Auto Theme">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        <span>Auto</span>
+                    </button>
+                    <button class="theme-btn" data-theme="dark" aria-label="Dark Theme">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <span>Dark</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-brand-container reveal delay-100">
+                    <img class="hero-app-icon" src="assets/icon.svg" alt="Lumoshell App Icon">
+                    <h1 class="hero-brand">
+                        <span style="font-style: italic; padding-right: 0.05em;">Lumo</span>shell
+                    </h1>
+                </div>
+                <p class="reveal delay-200" style="font-family: var(--font-sans); font-size: clamp(1.5rem, 3vw, 2.25rem); font-weight: 700; color: var(--text-primary); line-height: 1.1; letter-spacing: -0.03em; margin-bottom: 1.5rem; max-width: 800px;">
+                    The terminal appearance switcher macOS is missing.
+                </p>
+                <p class="lead reveal delay-300">No more squinting at a dark terminal in broad daylight, or burning your eyes on a glaring white screen at 2 AM. Lumoshell keeps your active sessions perfectly in sync.</p>
+                
+                <div class="badge reveal delay-300" style="background: rgba(149, 100, 0, 0.1); color: #956400; margin-bottom: 4rem;">macOS Utility</div>
+
+                <!-- Hero Theme Toggle -->
+                <div class="hero-theme-toggle-container reveal delay-300" style="margin-bottom: 2rem;">
+                    <div class="theme-toggle" aria-label="Theme Toggle">
+                        <button class="theme-btn" data-theme="light" aria-label="Light Theme">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                            <span>Light</span>
+                        </button>
+                        <button class="theme-btn active" data-theme="auto" aria-label="Auto Theme">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                            <span>Auto</span>
+                        </button>
+                        <button class="theme-btn" data-theme="dark" aria-label="Dark Theme">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                            <span>Dark</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Hero Media Grid -->
+                <div class="hero-media-grid reveal delay-300">
+                    
+                    <!-- Mock Terminal Container -->
+                    <div class="double-bezel">
+                        <div class="double-bezel-inner" style="padding: 1rem;">
+                            <div class="mac-window interactive-terminal" style="height: 100%; display: flex; flex-direction: column;">
+                                <div class="mac-header">
+                                    <div class="mac-dot"></div>
+                                    <div class="mac-dot"></div>
+                                    <div class="mac-dot"></div>
+                                    <div class="mac-title">user@macbook — -zsh</div>
+                                </div>
+                                <div class="terminal-body" style="flex-grow: 1;">
+                                    <p class="term-line prompt-prefix" data-prefix="~ %">lumoshell status</p>
+                                    <p class="term-line" style="margin-top: 1.5rem; margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.5rem; font-weight: 500; display: flex; align-items: center; flex-wrap: wrap;">
+                                        Currently tracking: <span class="term-status-text" style="font-weight: 800; margin-left: 0.5rem; color: var(--text-primary);">Light</span>
+                                    </p>
+                                    <p class="term-line prompt-prefix" data-prefix="~ %"><span class="cursor"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Demo Video Container -->
+                    <div class="double-bezel">
+                        <div class="double-bezel-inner video-container" style="padding: 0; background: #000; overflow: hidden;">
+                            <video loop muted playsinline style="width: 100%; display: block; object-fit: cover;">
+                                <source src="assets/demo.webm" type="video/webm">
+                            </video>
+                            <button class="play-pause-btn" aria-label="Play/Pause">
+                                <svg class="play-icon" viewBox="0 0 24 24" fill="currentColor" style="display: none; padding-left: 2px;"><path d="M8 5v14l11-7z"/></svg>
+                                <svg class="pause-icon" viewBox="0 0 24 24" fill="currentColor" style="display: block;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Install Instructions Container -->
+                    <div class="double-bezel">
+                        <div class="double-bezel-inner" style="padding: 2.5rem; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="margin-bottom: 2rem;">
+                                <div class="badge" style="background: rgba(159, 47, 45, 0.1); color: #9F2F2D;">Quick Install</div>
+                                <h2 style="font-size: 2rem; font-weight: 700;">Install</h2>
+                            </div>
+                            
+                            <div style="display: flex; flex-direction: column; gap: 2rem;">
+                                <!-- Agent Quick Install -->
+                                <div>
+                                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">Agent</h3>
+                                    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 1rem; line-height: 1.4;">Just ask your agent to install and configure it for you.</p>
+                                    <div class="terminal-block" style="margin-top: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative;">
+                                        <button class="copy-btn" onclick="copyCode(this, 'install https://github.com/aakaashjois/lumoshell using brew and set it up for me.')" aria-label="Copy prompt" title="Copy to clipboard">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                        </button>
+                                        
+                                        <div style="font-size: 0.75rem; color: #787774; margin-bottom: 0.5rem; font-family: var(--font-sans); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">AI Agent Prompt</div>
+                                        <div style="padding-right: 3rem;">
+                                            <code data-prefix=">" style="color: #F7F6F3; display: block;">"install https://github.com/aakaashjois/lumoshell using brew and set it up for me."</code>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 0;">
+
+                                <!-- Manual Install -->
+                                <div>
+                                    <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: var(--text-primary);">Homebrew</h3>
+                                    <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 1rem; line-height: 1.4;">Just copy and paste the commands in your terminal.</p>
+                                    <div class="terminal-block" style="margin-top: 0; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative;">
+                                        <button class="copy-btn" onclick="copyCode(this, 'brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell\nbrew trust aakaashjois/lumoshell\nbrew install lumoshell\nlumoshell setup')" aria-label="Copy script" title="Copy to clipboard">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                                        </button>
+                                        
+                                        <div style="font-size: 0.75rem; color: #787774; margin-bottom: 0.5rem; font-family: var(--font-sans); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700;">Manual Homebrew</div>
+                                        <div style="padding-right: 3rem;">
+                                            <code data-prefix="$" style="display: block;">brew tap aakaashjois/lumoshell https://github.com/aakaashjois/lumoshell</code>
+                                            <code data-prefix="$" style="display: block;">brew trust aakaashjois/lumoshell</code>
+                                            <code data-prefix="$" style="display: block;">brew install lumoshell</code>
+                                            <code data-prefix="$" style="display: block;">lumoshell setup</code>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- Architecture & Features Section -->
+            <section style="padding-top: 4rem;">
+                <div class="badge reveal" style="background: rgba(17, 17, 17, 0.1); color: var(--text-primary);">Features</div>
+                <h2 class="reveal" style="font-size: 3rem; font-weight: 700; margin-bottom: 2rem;">Seamless Integration.</h2>
+                
+                <div class="bento-grid">
+                    
+                    <!-- Bento Item 1 -->
+                    <div class="bento-item large reveal delay-100">
+                        <div class="double-bezel">
+                            <div class="double-bezel-inner" style="padding: 3rem;">
+                                <div class="badge" style="background: rgba(31, 108, 159, 0.1); color: #1F6C9F;">Architecture</div>
+                                <h3 style="margin-bottom: 0.75rem; font-size: 1.75rem; font-weight: 700;">Event-Driven Sync</h3>
+                                <p style="color: var(--text-secondary); margin-bottom: 2rem;">Lumoshell utilizes an efficient event listener architecture inspired by native Swift daemons. No CPU-hogging polling loops—just instant, automatic switching the moment macOS changes its appearance.</p>
+                                <div style="flex-grow: 1; display: flex; align-items: flex-end;">
+                                    <div style="padding: 1rem; background: var(--bg-color); border-radius: 8px; border: 1px solid var(--border-color); width: 100%;">
+                                        <div style="display: flex; gap: 1rem; align-items: center;">
+                                            <div style="width: 12px; height: 12px; border-radius: 50%; background: #27C93F; box-shadow: 0 0 8px rgba(39, 201, 63, 0.4);"></div>
+                                            <span style="font-family: var(--font-mono); font-size: 0.8rem; color: var(--text-secondary);">Listening for traitCollection changes...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Bento Item 2 -->
+                    <div class="bento-item small reveal delay-200">
+                        <div class="double-bezel">
+                            <div class="double-bezel-inner" style="padding: 3rem;">
+                                <div class="badge" style="background: rgba(52, 101, 56, 0.1); color: #346538;">Live Updates</div>
+                                <h3 style="margin-bottom: 0.75rem; font-size: 1.75rem; font-weight: 700;">Active Sessions</h3>
+                                <p style="color: var(--text-secondary);">With standard Accessibility permissions, Lumoshell can update your currently open terminal tabs in real-time. Never restart your shell just to get the right theme.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bento Item 3 -->
+                    <div class="bento-item reveal delay-100" style="grid-column: span 12;">
+                        <div class="double-bezel">
+                            <div class="double-bezel-inner" style="padding: 4rem; position: relative; overflow: hidden; display: flex; flex-direction: row; align-items: center;">
+                                <div style="position: relative; z-index: 2; max-width: 50%;">
+                                    <div class="badge" style="background: rgba(120, 119, 116, 0.1); color: #787774;">Ecosystem</div>
+                                    <h3 style="margin-bottom: 0.75rem; font-size: 2.5rem; font-weight: 700;">Native Feel</h3>
+                                    <p style="color: var(--text-secondary); font-size: 1.1rem;">Designed exclusively for Apple Terminal and macOS, providing a first-class citizen experience that feels like it was built by Apple.</p>
+                                </div>
+                                <img src="assets/icon.svg" class="bento-icon" alt="" style="position: absolute; right: -50px; width: 350px; height: 350px; transform: rotate(-12deg); opacity: 0.8; z-index: 1; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15)); transition: transform 0.8s var(--ease-custom);">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bento Item 4 -->
+                    <div class="bento-item reveal delay-200" style="grid-column: span 12;">
+                        <div class="double-bezel">
+                            <div class="double-bezel-inner" style="padding: 3rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
+                                <div class="badge" style="background: rgba(39, 201, 63, 0.1); color: #27C93F; margin-bottom: 0;">Open Source</div>
+                                <div>
+                                    <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">MIT License</h3>
+                                    <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0;">Completely open source and free forever. Contributions welcome.</p>
+                                </div>
+                                <a href="https://github.com/aakaashjois/lumoshell" class="btn" style="padding: 0.75rem 1.5rem; font-size: 1rem; margin-left: auto;">View on GitHub</a>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <footer>
+                <p>Lumoshell &copy; 2026. MIT Licensed.</p>
+                <p style="margin-top: 0.5rem; font-size: 0.95rem; color: var(--text-secondary);">Crafted with precision for macOS. Built by <a href="https://aakaashjois.com" target="_blank" style="color: var(--text-primary); text-decoration: none; font-weight: 600; border-bottom: 1px solid rgba(128,128,128,0.4); padding-bottom: 1px; transition: border-color 0.2s;">Aakaash Jois</a>.</p>
+            </footer>
+        </div>
+
+    <!-- Initialization Script -->
+    <script>
+        window.copyCode = function(button, text) {
+            navigator.clipboard.writeText(text);
+            const originalHTML = button.innerHTML;
+            button.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#27C93F" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+            setTimeout(() => {
+                button.innerHTML = originalHTML;
+            }, 2000);
+        };
+
+        document.addEventListener("DOMContentLoaded", () => {
+            // 1. Setup Theme Toggle
+            const buttons = document.querySelectorAll('.theme-btn');
+            const termStatus = document.querySelector('.term-status-text');
+            
+            const updateTheme = (theme) => {
+                // Add smooth transition class temporarily
+                document.body.classList.add('theme-transition');
+                setTimeout(() => document.body.classList.remove('theme-transition'), 500);
+
+                if (theme === 'light') {
+                    document.body.classList.remove('dark-theme');
+                    document.body.classList.add('light-theme');
+                    if(termStatus) termStatus.textContent = 'Light';
+                } else if (theme === 'dark') {
+                    document.body.classList.remove('light-theme');
+                    document.body.classList.add('dark-theme');
+                    if(termStatus) termStatus.textContent = 'Dark';
+                } else {
+                    document.body.classList.remove('light-theme', 'dark-theme');
+                    // Check OS preference
+                    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                    if(termStatus) termStatus.textContent = isDark ? 'Dark' : 'Light';
+                }
+
+                buttons.forEach(b => {
+                    b.classList.toggle('active', b.dataset.theme === theme);
+                });
+            };
+
+            // Listen for OS changes to update terminal text if auto is selected
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                const activeBtn = document.querySelector('.theme-btn.active');
+                if (activeBtn && activeBtn.dataset.theme === 'auto' && termStatus) {
+                    termStatus.textContent = e.matches ? 'Dark' : 'Light';
+                }
+            });
+
+            // Set initial state
+            updateTheme('auto');
+
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    updateTheme(btn.dataset.theme);
+                });
+            });
+
+            // Setup Video Playback & Intersection Observer
+            const videos = document.querySelectorAll('video');
+            let isUserVideoPaused = false;
+
+            const updateVideoButtons = (isPlaying) => {
+                document.querySelectorAll('.play-pause-btn').forEach(btn => {
+                    const playIcon = btn.querySelector('.play-icon');
+                    const pauseIcon = btn.querySelector('.pause-icon');
+                    if (playIcon && pauseIcon) {
+                        playIcon.style.display = isPlaying ? 'none' : 'block';
+                        pauseIcon.style.display = isPlaying ? 'block' : 'none';
+                    }
+                });
+            };
+
+            const syncPlay = () => {
+                videos.forEach(v => { v.muted = true; v.play().catch(e=>console.log(e)); });
+                updateVideoButtons(true);
+            };
+
+            const syncPause = () => {
+                videos.forEach(v => v.pause());
+                updateVideoButtons(false);
+            };
+
+            document.querySelectorAll('.video-container').forEach(container => {
+                container.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    if (videos[0].paused) {
+                        isUserVideoPaused = false;
+                        syncPlay();
+                    } else {
+                        isUserVideoPaused = true;
+                        syncPause();
+                    }
+                });
+            });
+
+            const videoObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        if (!isUserVideoPaused) syncPlay();
+                    } else {
+                        // Pause when out of view, but don't set userPaused state
+                        syncPause();
+                    }
+                });
+            }, { threshold: 0.8 });
+
+            const topVideoContainer = document.querySelector('.video-container');
+            if (topVideoContainer) {
+                videoObserver.observe(topVideoContainer);
+            }
+
+            // 2. Setup Intersection Observers
+            const observerOptions = {
+                root: null,
+                rootMargin: '0px',
+                threshold: 0.08
+            };
+
+            const observer = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, observerOptions);
+
+            // Observe elements in both layers
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+            // 3. Sequential Nav Assembly
+            const navObserverOptions = {
+                root: null,
+                rootMargin: '-80px 0px 0px 0px', // Offset for the nav bar height
+                threshold: 0
+            };
+            
+            const navAssemblyObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const isAboveViewport = !entry.isIntersecting && entry.boundingClientRect.top < 100;
+                    
+                    if (entry.target.classList.contains('hero-brand-container')) {
+                        if (isAboveViewport) {
+                            document.body.classList.add('nav-brand-visible', 'nav-visible');
+                        } else {
+                            document.body.classList.remove('nav-brand-visible');
+                            if (!document.body.classList.contains('nav-toggle-visible')) {
+                                document.body.classList.remove('nav-visible');
+                            }
+                        }
+                    }
+                    if (entry.target.classList.contains('hero-theme-toggle-container')) {
+                        if (isAboveViewport) {
+                            document.body.classList.add('nav-toggle-visible');
+                        } else {
+                            document.body.classList.remove('nav-toggle-visible');
+                        }
+                    }
+                });
+            }, navObserverOptions);
+
+            const heroBrand = document.querySelector('.hero-brand-container');
+            const heroToggle = document.querySelector('.hero-theme-toggle-container');
+            if (heroBrand) navAssemblyObserver.observe(heroBrand);
+            if (heroToggle) navAssemblyObserver.observe(heroToggle);
+        });
+    </script>
+</body>
+</html>
