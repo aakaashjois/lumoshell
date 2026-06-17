@@ -75,7 +75,6 @@ jobs:
           mkdir -p dist/universal
           cp src/appearance-sync-agent/.build/release/lumoshell-appearance-sync-agent dist/universal/
           cp bin/lumoshell dist/universal/
-          cp bin/lumoshell-apply dist/universal/
           cp bin/lumoshell-install dist/universal/
           cp bin/lumoshell-uninstall dist/universal/
           python3 - <<'PY'
