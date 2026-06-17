@@ -371,30 +371,6 @@
             text-align: left;
         }
 
-        .bento-ecosystem {
-            padding: 4rem;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-        }
-
-        .bento-ecosystem-content {
-            position: relative;
-            z-index: 2;
-            max-width: 50%;
-        }
-
-        .bento-opensource {
-            padding: 3rem;
-            display: flex;
-            flex-direction: row;
-            align-items: center;
-            gap: 2rem;
-            flex-wrap: wrap;
-        }
-
         @media (max-width: 767px) {
             section {
                 padding: 5rem 1rem;
@@ -405,23 +381,6 @@
             .double-bezel:hover {
                 transform: none;
                 box-shadow: none;
-            }
-            .bento-ecosystem {
-                flex-direction: column;
-                align-items: flex-start;
-                padding: 2rem !important;
-            }
-            .bento-ecosystem-content {
-                max-width: 100%;
-            }
-            .bento-icon {
-                position: relative !important;
-                right: auto !important;
-                margin-top: 2rem;
-                width: 240px !important;
-                height: 240px !important;
-                transform: rotate(0deg) !important;
-                align-self: center;
             }
             .bento-opensource {
                 flex-direction: column;
@@ -915,21 +874,18 @@
                     </div>
 
                     <!-- Bento Item 3 -->
-                    <div class="bento-item reveal delay-100" style="grid-column: span 12;">
+                    <div class="bento-item small reveal delay-100">
                         <div class="double-bezel">
-                            <div class="double-bezel-inner bento-ecosystem">
-                                <div class="bento-ecosystem-content">
-                                    <div class="badge" style="background: rgba(120, 119, 116, 0.1); color: #787774;">Ecosystem</div>
-                                    <h3 style="margin-bottom: 0.75rem; font-size: 2.5rem; font-weight: 700;">Native Feel</h3>
-                                    <p style="color: var(--text-secondary); font-size: 1.1rem;">Designed exclusively for Apple Terminal and macOS, providing a first-class citizen experience that feels like it was built by Apple.</p>
-                                </div>
-                                <img src="assets/icon.svg" class="bento-icon" alt="" style="position: absolute; right: -50px; width: 350px; height: 350px; transform: rotate(-12deg); opacity: 0.8; z-index: 1; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15)); transition: transform 0.8s var(--ease-custom);">
+                            <div class="double-bezel-inner" style="padding: 3rem;">
+                                <div class="badge" style="background: rgba(120, 119, 116, 0.1); color: #787774;">Ecosystem</div>
+                                <h3 style="margin-bottom: 0.75rem; font-size: 1.75rem; font-weight: 700;">Native Feel</h3>
+                                <p style="color: var(--text-secondary); font-size: 1.1rem;">Designed exclusively for Apple Terminal and macOS, providing a first-class citizen experience.</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Bento Item 4 -->
-                    <div class="bento-item reveal delay-200" style="grid-column: span 12;">
+                    <div class="bento-item large reveal delay-200">
                         <div class="double-bezel">
                             <div class="double-bezel-inner bento-opensource">
                                 <div class="badge" style="background: rgba(39, 201, 63, 0.1); color: #27C93F; margin-bottom: 0;">Open Source</div>
