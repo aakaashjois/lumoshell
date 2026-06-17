@@ -1041,79 +1041,74 @@
                 });
             });
 
-            const videoObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        if (!isUserVideoPaused) syncPlay();
-                    } else {
-                        // Pause when out of view, but don't set userPaused state
-                        syncPause();
-                    }
-                });
-            }, { 
-                root: null,
-                threshold: 0.8 
-            });
-
+            // --- Scroll Tracking for Safari Compatibility ---
+            // IntersectionObserver is notoriously buggy on iOS Safari with custom scroll containers (overflow: hidden on body).
+            // We use a robust, high-performance scroll listener on the inner container instead.
+            const scrollContainer = document.querySelector('.page-content-inner');
+            const revealElements = document.querySelectorAll('.reveal');
             const topVideoContainer = document.querySelector('.video-container');
-            if (topVideoContainer) {
-                videoObserver.observe(topVideoContainer);
-            }
-
-            // 2. Setup Intersection Observers
-            const observerOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.08
-            };
-
-            const observer = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, observerOptions);
-
-            // Observe elements in both layers
-            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-            // 3. Sequential Nav Assembly
-            const navObserverOptions = {
-                root: null,
-                rootMargin: '-80px 0px 0px 0px', // Offset for the nav bar height
-                threshold: 0
-            };
-            
-            const navAssemblyObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    const isAboveViewport = !entry.isIntersecting && entry.boundingClientRect.top < 100;
-                    
-                    if (entry.target.classList.contains('hero-brand-container')) {
-                        if (isAboveViewport) {
-                            document.body.classList.add('nav-brand-visible', 'nav-visible');
-                        } else {
-                            document.body.classList.remove('nav-brand-visible');
-                            if (!document.body.classList.contains('nav-toggle-visible')) {
-                                document.body.classList.remove('nav-visible');
-                            }
-                        }
-                    }
-                    if (entry.target.classList.contains('hero-theme-toggle-container')) {
-                        if (isAboveViewport) {
-                            document.body.classList.add('nav-toggle-visible');
-                        } else {
-                            document.body.classList.remove('nav-toggle-visible');
-                        }
-                    }
-                });
-            }, navObserverOptions);
-
             const heroBrand = document.querySelector('.hero-brand-container');
             const heroToggle = document.querySelector('.hero-theme-toggle-container');
-            if (heroBrand) navAssemblyObserver.observe(heroBrand);
-            if (heroToggle) navAssemblyObserver.observe(heroToggle);
+
+            function handleScrollTracking() {
+                const windowHeight = window.innerHeight;
+
+                // 1. Video Autoplay Tracking (threshold ~0.8 -> 20% visible margin)
+                if (topVideoContainer) {
+                    const vRect = topVideoContainer.getBoundingClientRect();
+                    const isIntersecting = vRect.top < windowHeight * 0.8 && vRect.bottom > windowHeight * 0.2;
+                    if (isIntersecting) {
+                        if (!isUserVideoPaused) syncPlay();
+                    } else {
+                        syncPause();
+                    }
+                }
+
+                // 2. Reveal Animations (threshold ~0.08 -> slightly above bottom)
+                revealElements.forEach(el => {
+                    if (!el.classList.contains('visible')) {
+                        const rRect = el.getBoundingClientRect();
+                        if (rRect.top <= windowHeight - 50) {
+                            el.classList.add('visible');
+                        }
+                    }
+                });
+
+                // 3. Sequential Nav Assembly
+                let isBrandAbove = false;
+                if (heroBrand) {
+                    const bRect = heroBrand.getBoundingClientRect();
+                    // rootMargin: -80px means it triggers when top is < 80px
+                    isBrandAbove = bRect.top < 80;
+                    if (isBrandAbove) {
+                        document.body.classList.add('nav-brand-visible', 'nav-visible');
+                    } else {
+                        document.body.classList.remove('nav-brand-visible');
+                    }
+                }
+
+                let isToggleAbove = false;
+                if (heroToggle) {
+                    const tRect = heroToggle.getBoundingClientRect();
+                    isToggleAbove = tRect.top < 80;
+                    if (isToggleAbove) {
+                        document.body.classList.add('nav-toggle-visible');
+                    } else {
+                        document.body.classList.remove('nav-toggle-visible');
+                    }
+                }
+
+                if (!isBrandAbove && !isToggleAbove) {
+                    document.body.classList.remove('nav-visible');
+                }
+            }
+
+            if (scrollContainer) {
+                // Initial check on load
+                handleScrollTracking();
+                // Check on scroll
+                scrollContainer.addEventListener('scroll', handleScrollTracking, { passive: true });
+            }
         });
     </script>
 </body>
