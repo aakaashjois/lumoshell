@@ -18,7 +18,7 @@
 
 Lumoshell effortlessly bridges the gap between your system's appearance and Apple Terminal, keeping your active sessions perfectly in sync with macOS light and dark modes—instantly and automatically.
 
-https://github.com/user-attachments/assets/96e7e153-38cc-4c3a-8ae6-f7d19497f736
+<video src="assets/demo.webm" controls autoplay loop muted></video>
 
 ## ⚡ Quick Install
 
