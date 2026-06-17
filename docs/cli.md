@@ -18,7 +18,7 @@ lumoshell <command> [options]
 
 ## Helper Binaries
 
-- `lumoshell-apply`
+
 - `lumoshell-install`
 - `lumoshell-uninstall`
 - `lumoshell-appearance-sync-agent`

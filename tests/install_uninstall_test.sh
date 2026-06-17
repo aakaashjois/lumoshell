@@ -36,7 +36,7 @@ run_install_uninstall_idempotency_test() {
   mkdir -p "$temp_bin"
 
   write_noop_executable "$temp_bin/lumoshell-appearance-sync-agent"
-  write_noop_executable "$temp_bin/lumoshell-apply"
+
   write_noop_executable "$temp_bin/launchctl"
 
   zprofile="$temp_home/.zprofile"
@@ -73,7 +73,7 @@ run_malformed_marker_protection_test() {
   cat > "$zprofile" <<'EOF'
 export FOO="bar"
 # >>> lumoshell managed block >>>
-lumoshell-apply --new-session >/dev/null 2>&1 || true
+lumoshell-appearance-sync-agent --apply-new-session >/dev/null 2>&1 || true
 EOF
   before_snapshot="$(<"$zprofile")"
 
@@ -99,7 +99,7 @@ run_homebrew_opt_path_stability_test() {
   chmod +x "$cellar_bin/lumoshell-install" "$cellar_bin/lumoshell-uninstall"
 
   write_noop_executable "$opt_bin/lumoshell-appearance-sync-agent"
-  write_noop_executable "$opt_bin/lumoshell-apply"
+
   write_noop_executable "$opt_bin/launchctl"
 
   ln -s "$cellar_bin/lumoshell-install" "$opt_bin/lumoshell-install"
@@ -116,14 +116,14 @@ run_homebrew_opt_path_stability_test() {
   [[ -f "$launch_agent_path" ]] || fail "expected LaunchAgent file to be created"
   [[ -f "$zprofile" ]] || fail "expected zprofile to exist"
 
-  grep -Fq "/opt/homebrew/bin/lumoshell-apply" "$launch_agent_path" || fail "LaunchAgent should reference stable opt-bin lumoshell-apply path"
+
   grep -Fq "/opt/homebrew/bin/lumoshell-appearance-sync-agent" "$launch_agent_path" || fail "LaunchAgent should reference stable opt-bin agent path"
 
   if grep -Fq "/Cellar/lumoshell/" "$launch_agent_path"; then
     fail "LaunchAgent should not reference versioned Cellar paths"
   fi
 
-  grep -Fq "/opt/homebrew/bin/lumoshell-apply\" --new-session" "$zprofile" || fail "zprofile hook should reference stable opt-bin lumoshell-apply path"
+  grep -Fq "/opt/homebrew/bin/lumoshell-appearance-sync-agent\" --apply-new-session" "$zprofile" || fail "zprofile hook should reference stable opt-bin lumoshell-apply path"
   if grep -Fq "/Cellar/lumoshell/" "$zprofile"; then
     fail "zprofile hook should not reference versioned Cellar paths"
   fi

@@ -4,7 +4,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CLI="$ROOT_DIR/bin/lumoshell"
-APPLY="$ROOT_DIR/bin/lumoshell-apply"
+
 FORMULA="$ROOT_DIR/Formula/lumoshell.rb"
 
 fail() {
@@ -27,8 +27,8 @@ assert_contains "$help_output" "setup [--reset | --remove | --list | --light <pr
 assert_contains "$help_output" "logs" "expected logs command in help output"
 assert_contains "$help_output" "doctor" "expected doctor command in help output"
 
-apply_help="$("$APPLY" --help)"
-assert_contains "$apply_help" "--new-session" "expected --new-session in apply help"
+apply_help="$("$CLI" apply --help)"
+assert_contains "$apply_help" "--apply-new-session" "expected --apply-new-session in apply help"
 assert_contains "$apply_help" "--dry-run" "expected --dry-run in apply help"
 
 echo "[cli_contract_test] removed flag rejection"
@@ -42,7 +42,7 @@ if "$CLI" status extra >/dev/null 2>&1; then
 fi
 
 echo "[cli_contract_test] formula caveat drift"
-if rg -F -- "--reason" "$FORMULA" >/dev/null; then
+if grep -F -- "--reason" "$FORMULA" >/dev/null; then
   fail "Formula caveats should not mention removed --reason flag"
 fi
 

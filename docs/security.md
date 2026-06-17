@@ -18,7 +18,7 @@
 This project is a local macOS utility. The primary security-sensitive areas are:
 
 - install/uninstall scripts (`bin/lumoshell-install`, `bin/lumoshell-uninstall`)
-- profile apply logic (`bin/lumoshell-apply`)
+
 - launchd integration (`launchd/*.plist`)
 - sync agent execution path (`src/appearance-sync-agent`)
 

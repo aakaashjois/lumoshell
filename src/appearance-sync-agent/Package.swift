@@ -16,10 +16,6 @@ let package = Package(
         .executableTarget(
             name: "lumoshell-appearance-sync-agent",
             dependencies: []
-        ),
-        .testTarget(
-            name: "lumoshell-appearance-sync-agentTests",
-            dependencies: ["lumoshell-appearance-sync-agent"]
         )
     ]
 )

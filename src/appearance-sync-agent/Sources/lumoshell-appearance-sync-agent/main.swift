@@ -1,84 +1,126 @@
 import AppKit
 import Foundation
-
-enum AppearanceMode: String, Equatable {
-    case light
-    case dark
-}
+import os
 
 struct Config {
-    var applyCommand: String = "lumoshell-apply"
     var quiet: Bool = false
-    var logFile: String = ("~/Library/Logs/lumoshell/appearance-sync-agent.log" as NSString).expandingTildeInPath
+    var applyOnly: Bool = false
+    var applyNewSession: Bool = false
+    var dryRun: Bool = false
+    var verbose: Bool = false
+    var listProfiles: Bool = false
 }
 
-func currentAppearanceMode() -> AppearanceMode {
-    // We use UserDefaults because it updates synchronously with the Distributed Notification.
-    // AppKit's effectiveAppearance updates asynchronously and can cause a race condition
-    // where it still returns the old mode, causing the agent to silently drop the event.
-    let isDark = UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
-    return isDark ? .dark : .light
+extension String {
+    func escapedForAppleScript() -> String {
+        return self.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+    }
+}
+
+func isDarkAppearance() -> Bool {
+    return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
 }
 
 final class ApplyRunner {
-    private let logger: AgentLogger
+    private let logger: Logger
     private let quiet: Bool
+    private let verbose: Bool
+    private let isManualApply: Bool
     private var lastRunAt: Date = .distantPast
     private let minInterval: TimeInterval = 0.25
-    private let profileStoreDomain = "com.user.lumoshell"
-    private let terminalDomain = "com.apple.Terminal"
-    private let lightDefaultProfile = "Basic"
-    private let darkDefaultProfile = "Pro"
 
-    init(quiet: Bool, logger: AgentLogger) {
+    init(quiet: Bool, verbose: Bool, isManualApply: Bool, logger: Logger) {
         self.quiet = quiet
+        self.verbose = verbose
+        self.isManualApply = isManualApply
         self.logger = logger
     }
 
-    func run(trigger: String, mode: AppearanceMode) {
+    func run(trigger: String, isDark: Bool, newSession: Bool = false, dryRun: Bool = false) {
         let now = Date()
-        if now.timeIntervalSince(lastRunAt) < minInterval {
-            logger.log("trigger=\(trigger) skipping apply due to debounce window", level: .debug)
+        if !isManualApply && now.timeIntervalSince(lastRunAt) < minInterval {
+            logger.info("trigger=\(trigger, privacy: .public) skipping apply due to debounce window")
             return
         }
         lastRunAt = now
 
-        let profile = resolveProfile(mode: mode)
+        let profile = resolveProfile(isDark: isDark)
+
+        if dryRun {
+            print("mode=\(isDark ? "dark" : "light")")
+            print("profile=\(profile)")
+            if newSession {
+                print("action=defaults+active-tab-best-effort")
+            } else {
+                print("action=defaults+all-open-tabs-best-effort")
+            }
+            return
+        }
+
+        if verbose && isManualApply {
+            print("lumoshell-apply: mode=\(isDark ? "dark" : "light") profile=\(profile)")
+        }
+
         applyTerminalDefaults(profile: profile)
-        applyOpenTabs(profile: profile)
-        logger.log("trigger=\(trigger) mode=\(mode.rawValue) applied profile='\(profile)'", level: .info)
+        
+        if isTerminalRunning() {
+            let success = newSession ? applyToActiveSession(profile: profile) : applyToAllSessions(profile: profile)
+            if !success {
+                if isManualApply {
+                    let fallbackMsg = newSession ? "applied defaults only for new session" : "kept defaults-only mode"
+                    fputs("lumoshell warning: Automation permission not available; \(fallbackMsg).\n", stderr)
+                }
+                logger.error("open-tab apply failed: automation permission not available")
+            }
+        }
+        
+        logger.info("trigger=\(trigger, privacy: .public) mode=\(isDark ? "dark" : "light", privacy: .public) applied profile='\(profile, privacy: .public)'")
     }
 
-    private func resolveProfile(mode: AppearanceMode) -> String {
-        let profileStore = UserDefaults(suiteName: profileStoreDomain)
-        let key = mode == .dark ? "DarkProfile" : "LightProfile"
-        if let stored = profileStore?.string(forKey: key), !stored.isEmpty {
+    private func resolveProfile(isDark: Bool) -> String {
+        let defaultsKey = isDark ? "DarkProfile" : "LightProfile"
+        let store = UserDefaults(suiteName: "com.user.lumoshell")
+        if let stored = store?.string(forKey: defaultsKey), !stored.isEmpty {
             return stored
         }
-        return mode == .dark ? darkDefaultProfile : lightDefaultProfile
+        return isDark ? "Pro" : "Basic"
     }
 
     private func applyTerminalDefaults(profile: String) {
-        guard let terminalDefaults = UserDefaults(suiteName: terminalDomain) else {
-            logger.log("failed to open Terminal defaults domain", level: .error)
+        guard let defaults = UserDefaults(suiteName: "com.apple.Terminal") else {
+            logger.error("failed to open Terminal defaults domain")
             return
         }
-        terminalDefaults.set(profile, forKey: "Default Window Settings")
-        terminalDefaults.set(profile, forKey: "Startup Window Settings")
-        terminalDefaults.synchronize()
+        defaults.set(profile, forKey: "Default Window Settings")
+        defaults.set(profile, forKey: "Startup Window Settings")
+        defaults.synchronize()
     }
 
-    private func applyOpenTabs(profile: String) {
-        guard isTerminalRunning() else {
-            return
-        }
+    private func isTerminalRunning() -> Bool {
+        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.apple.Terminal" }
+    }
 
-        let escapedProfile = profile
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+    private func applyToActiveSession(profile: String) -> Bool {
+        let script = """
+        set targetProfile to "\(profile.escapedForAppleScript())"
+        with timeout of 3 seconds
+          tell application "Terminal"
+            if (count of windows) > 0 then
+              try
+                set current settings of selected tab of front window to settings set targetProfile
+              end try
+            end if
+            set default settings to settings set targetProfile
+            set startup settings to settings set targetProfile
+          end tell
+        end timeout
+        """
+        return execute(script: script)
+    }
 
-        let scriptSource = """
-        set targetProfile to "\(escapedProfile)"
+    private func applyToAllSessions(profile: String) -> Bool {
+        let script = """
+        set targetProfile to "\(profile.escapedForAppleScript())"
         with timeout of 3 seconds
           tell application "Terminal"
             if (count of windows) > 0 then
@@ -89,149 +131,40 @@ final class ApplyRunner {
           end tell
         end timeout
         """
+        return execute(script: script)
+    }
 
-        guard let appleScript = NSAppleScript(source: scriptSource) else {
-            logger.log("failed to compile NSAppleScript", level: .error)
-            return
+    private func execute(script: String) -> Bool {
+        guard let appleScript = NSAppleScript(source: script) else {
+            logger.error("failed to compile NSAppleScript")
+            return false
         }
-
         var errorDict: NSDictionary?
         appleScript.executeAndReturnError(&errorDict)
-
         if let error = errorDict {
             let errorMsg = error[NSAppleScript.errorMessage] as? String ?? "unknown NSAppleScript error"
             let errorCode = error[NSAppleScript.errorNumber] as? Int ?? -1
-            logger.log("open-tab apply failed with status=\(errorCode): \(errorMsg)", level: .error)
+            logger.error("AppleScript failed with status=\(errorCode, privacy: .public): \(errorMsg, privacy: .public)")
+            return false
         }
-    }
-
-    private func isTerminalRunning() -> Bool {
-        NSWorkspace.shared.runningApplications.contains { $0.bundleIdentifier == "com.apple.Terminal" }
-    }
-}
-
-final class AgentLogger {
-    enum Level: String {
-        case debug = "DEBUG"
-        case info = "INFO"
-        case error = "ERROR"
-    }
-
-    private let logFilePath: String
-    private let retentionInterval: TimeInterval = 24 * 60 * 60
-    private let pruneInterval: TimeInterval = 5 * 60
-    private var lastPrunedAt: Date = .distantPast
-    private let formatter: ISO8601DateFormatter = {
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.formatOptions = [.withInternetDateTime]
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return dateFormatter
-    }()
-
-    init(logFilePath: String) {
-        self.logFilePath = (logFilePath as NSString).expandingTildeInPath
-        ensureLogDirectory()
-    }
-
-    func log(_ message: String, level: Level) {
-        pruneIfNeeded()
-        let timestamp = formatter.string(from: Date())
-        appendLine("\(timestamp) [\(level.rawValue)] \(message)")
-    }
-
-    private func ensureLogDirectory() {
-        let directoryPath = (logFilePath as NSString).deletingLastPathComponent
-        if directoryPath.isEmpty {
-            return
-        }
-        do {
-            try FileManager.default.createDirectory(
-                atPath: directoryPath,
-                withIntermediateDirectories: true
-            )
-        } catch {
-            fputs(
-                "lumoshell-appearance-sync-agent: failed to create log directory at \(directoryPath): \(error)\n",
-                stderr
-            )
-        }
-    }
-
-    private func appendLine(_ line: String) {
-        let payload = line + "\n"
-        guard let data = payload.data(using: .utf8) else {
-            return
-        }
-        let fileManager = FileManager.default
-        if !fileManager.fileExists(atPath: logFilePath) {
-            fileManager.createFile(atPath: logFilePath, contents: nil)
-        }
-        do {
-            let handle = try FileHandle(forWritingTo: URL(fileURLWithPath: logFilePath))
-            defer { try? handle.close() }
-            try handle.seekToEnd()
-            try handle.write(contentsOf: data)
-        } catch {
-            fputs("lumoshell-appearance-sync-agent: failed to write log file at \(logFilePath): \(error)\n", stderr)
-        }
-    }
-
-    private func pruneIfNeeded() {
-        let now = Date()
-        if now.timeIntervalSince(lastPrunedAt) < pruneInterval {
-            return
-        }
-        lastPrunedAt = now
-        prune(now: now)
-    }
-
-    private func prune(now: Date) {
-        let cutoff = now.addingTimeInterval(-retentionInterval)
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: logFilePath)),
-              let content = String(data: data, encoding: .utf8) else {
-            return
-        }
-        let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
-        var kept: [String] = []
-        kept.reserveCapacity(lines.count)
-
-        for line in lines {
-            let row = String(line)
-            if row.isEmpty {
-                continue
-            }
-            guard let firstToken = row.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true).first,
-                  let timestamp = formatter.date(from: String(firstToken)) else {
-                continue
-            }
-            if timestamp >= cutoff {
-                kept.append(row)
-            }
-        }
-
-        let rewritten = kept.joined(separator: "\n")
-        let finalContent = rewritten.isEmpty ? "" : rewritten + "\n"
-        try? finalContent.write(toFile: logFilePath, atomically: true, encoding: .utf8)
+        return true
     }
 }
 
 final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
     private let applyRunner: ApplyRunner
-    private let logger: AgentLogger
-    private var lastMode: AppearanceMode?
+    private let logger: Logger
+    private var lastIsDark: Bool?
     private var themeObserver: NSObjectProtocol?
 
     init(config: Config) {
-        self.logger = AgentLogger(logFilePath: config.logFile)
-        self.applyRunner = ApplyRunner(quiet: config.quiet, logger: self.logger)
+        self.logger = Logger(subsystem: "com.user.lumoshell", category: "agent")
+        self.applyRunner = ApplyRunner(quiet: config.quiet, verbose: false, isManualApply: false, logger: self.logger)
         super.init()
-        if !config.applyCommand.isEmpty && config.applyCommand != "lumoshell-apply" {
-            logger.log("ignoring --apply-cmd in swift-native apply mode", level: .debug)
-        }
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        logger.log("appearance sync agent started", level: .info)
+        logger.info("appearance sync agent started")
         trackAndApply(trigger: "startup", force: true)
 
         let themeNotification = Notification.Name("AppleInterfaceThemeChangedNotification")
@@ -248,16 +181,26 @@ final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
         let app = NSApplication.shared
         app.setActivationPolicy(.prohibited)
         app.delegate = self
+        
+        let sigtermSource = DispatchSource.makeSignalSource(signal: SIGTERM, queue: .main)
+        sigtermSource.setEventHandler {
+            self.logger.info("received SIGTERM, exiting cleanly")
+            exit(0)
+        }
+        sigtermSource.resume()
+        // Ignore SIGTERM so the dispatch source can handle it
+        signal(SIGTERM, SIG_IGN)
+
         app.run()
     }
 
     private func trackAndApply(trigger: String, force: Bool) {
-        let mode = currentAppearanceMode()
-        if !force, mode == lastMode {
+        let isDark = isDarkAppearance()
+        if !force, isDark == lastIsDark {
             return
         }
-        lastMode = mode
-        applyRunner.run(trigger: trigger, mode: mode)
+        lastIsDark = isDark
+        applyRunner.run(trigger: trigger, isDark: isDark)
     }
 }
 
@@ -268,30 +211,34 @@ func parseArgs(arguments: [String]) -> Config {
     while index < arguments.count {
         let argument = arguments[index]
         switch argument {
-        case "--apply-cmd":
-            guard index + 1 < arguments.count else {
-                fputs("--apply-cmd requires a value\n", stderr)
-                exit(1)
-            }
-            config.applyCommand = arguments[index + 1]
-            index += 2
+        case "--apply":
+            config.applyOnly = true
+            index += 1
+        case "--apply-new-session":
+            config.applyNewSession = true
+            index += 1
+        case "--dry-run":
+            config.dryRun = true
+            index += 1
+        case "--verbose":
+            config.verbose = true
+            index += 1
         case "--quiet":
             config.quiet = true
             index += 1
-        case "--log-file":
-            guard index + 1 < arguments.count else {
-                fputs("--log-file requires a value\n", stderr)
-                exit(1)
-            }
-            config.logFile = (arguments[index + 1] as NSString).expandingTildeInPath
-            index += 2
+        case "--list-profiles":
+            config.listProfiles = true
+            index += 1
         case "-h", "--help":
             print("""
             Usage: lumoshell-appearance-sync-agent [options]
 
-              --apply-cmd <path>   Deprecated in swift-native apply mode
+              --apply              Manually apply current mode and exit
+              --apply-new-session  Manually apply current mode to active tab only and exit
+              --list-profiles      Print all Terminal profiles and exit
+              --dry-run            Print what would be applied without modifying Terminal
+              --verbose            Print verbose apply output
               --quiet              Reduce output
-              --log-file <path>    Path for sync-agent log file
             """)
             exit(0)
         default:
@@ -308,5 +255,29 @@ func parseArgs() -> Config {
 }
 
 let config = parseArgs()
+
+if config.listProfiles {
+    let path = ("~/Library/Preferences/com.apple.Terminal.plist" as NSString).expandingTildeInPath
+    var profiles: [String] = []
+    if let dict = NSDictionary(contentsOfFile: path),
+       let settings = dict["Window Settings"] as? [String: Any] {
+        profiles = Array(settings.keys)
+    }
+    if profiles.isEmpty {
+        profiles = ["Basic", "Pro", "Ocean", "Homebrew"]
+    }
+    for profile in profiles.sorted() {
+        print(profile)
+    }
+    exit(0)
+}
+
+if config.applyOnly || config.applyNewSession || config.dryRun {
+    let logger = Logger(subsystem: "com.user.lumoshell", category: "agent")
+    let runner = ApplyRunner(quiet: config.quiet, verbose: config.verbose, isManualApply: true, logger: logger)
+    runner.run(trigger: "manual-cli", isDark: isDarkAppearance(), newSession: config.applyNewSession, dryRun: config.dryRun)
+    exit(0)
+}
+
 let agent = AppearanceSyncAgent(config: config)
 agent.start()
