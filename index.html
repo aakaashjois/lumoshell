@@ -1051,7 +1051,7 @@
                     }
                 });
             }, { 
-                root: document.querySelector('.page-content-inner'),
+                root: null,
                 threshold: 0.8 
             });
 
@@ -1062,7 +1062,7 @@
 
             // 2. Setup Intersection Observers
             const observerOptions = {
-                root: document.querySelector('.page-content-inner'),
+                root: null,
                 rootMargin: '0px',
                 threshold: 0.08
             };
@@ -1081,7 +1081,7 @@
 
             // 3. Sequential Nav Assembly
             const navObserverOptions = {
-                root: document.querySelector('.page-content-inner'),
+                root: null,
                 rootMargin: '-80px 0px 0px 0px', // Offset for the nav bar height
                 threshold: 0
             };
