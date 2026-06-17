@@ -20,41 +20,17 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 VERSION_PLACEHOLDER="__LUMOSHELL_VERSION__"
 
 resolve_version() {
-  # Release workflow injects the tag version into VERSION_PLACEHOLDER.
   if [[ "$VERSION_PLACEHOLDER" != "__LUMOSHELL_VERSION__" ]]; then
     echo "$VERSION_PLACEHOLDER"
-    return
+  else
+    echo "dev"
   fi
-
-  # Homebrew installs from Cellar paths like:
-  # /opt/homebrew/Cellar/lumoshell/<version>/bin/lumoshell
-  if [[ "$SCRIPT_PATH" =~ /Cellar/lumoshell/([^/]+)/bin/lumoshell$ ]]; then
-    echo "${BASH_REMATCH[1]}"
-    return
-  fi
-
-  # In development checkouts, prefer the latest git tag if available.
-  if command -v git >/dev/null 2>&1; then
-    local repo_root
-    repo_root="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null || true)"
-    if [[ -n "$repo_root" ]]; then
-      local remote_url
-      remote_url="$(git -C "$repo_root" remote get-url origin 2>/dev/null || true)"
-      if [[ "$remote_url" == *"aakaashjois/lumoshell"* ]]; then
-        local tag
-        tag="$(git -C "$repo_root" describe --tags --abbrev=0 2>/dev/null || true)"
-        if [[ -n "$tag" ]]; then
-          echo "${tag#v}"
-          return
-        fi
-      fi
-    fi
-  fi
-
-  echo "dev"
 }
 
 VERSION="$(resolve_version)"
+
+AGENT="$SCRIPT_DIR/lumoshell-appearance-sync-agent"
+[[ -x "$AGENT" ]] || AGENT="$SCRIPT_DIR/../src/appearance-sync-agent/.build/release/lumoshell-appearance-sync-agent"
 
 usage() {
   cat <<'EOF'
@@ -73,7 +49,6 @@ EOF
 }
 
 profile_store_domain="com.user.lumoshell"
-agent_log_path="${HOME}/Library/Logs/lumoshell/appearance-sync-agent.log"
 
 profile_key_for_mode() {
   case "$1" in
@@ -93,8 +68,8 @@ status() {
   fi
 
   local light_value dark_value
-  light_value="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null || true)"
-  dark_value="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null || true)"
+  light_value="$(defaults read "$profile_store_domain" LightProfile 2>/dev/null)"
+  dark_value="$(defaults read "$profile_store_domain" DarkProfile 2>/dev/null)"
 
   if [[ -n "$light_value" ]]; then
     echo "light: $light_value"
@@ -209,6 +184,7 @@ interactive_select() {
   echo "${options[$selected]}"
 }
 
+
 setup() {
   local list_profiles=0
   local arg_light=""
@@ -220,7 +196,7 @@ setup() {
         defaults delete "$profile_store_domain" >/dev/null 2>&1 || true
         echo "Reset all profile overrides."
         echo "Applying updated profile configuration..."
-        exec "$SCRIPT_DIR/lumoshell-apply"
+        exec "$AGENT" --apply
         ;;
       --remove)
         exec "$SCRIPT_DIR/lumoshell-uninstall"
@@ -257,24 +233,7 @@ setup() {
     echo "Fetching available Terminal profiles..."
   fi
   local profiles
-  # shellcheck disable=SC2016
-  local jxa_script='
-ObjC.import("Foundation");
-var path = $( "~/Library/Preferences/com.apple.Terminal.plist" ).stringByExpandingTildeInPath;
-var dict = $.NSDictionary.dictionaryWithContentsOfFile(path);
-if (dict) {
-  var settings = dict.objectForKey("Window Settings");
-  if (settings) {
-    var keys = settings.allKeys;
-    var out = [];
-    for (var i = 0; i < keys.count; i++) {
-        out.push(keys.objectAtIndex(i).js);
-    }
-    out.join("\n");
-  }
-}
-'
-  IFS=$'\n' read -r -d '' -a profiles < <(osascript -l JavaScript -e "$jxa_script" 2>/dev/null && printf '\0')
+  IFS=$'\n' read -r -d '' -a profiles < <("$AGENT" --list-profiles 2>/dev/null && printf '\0')
 
   if [[ ${#profiles[@]} -eq 0 ]]; then
     echo "Failed to retrieve terminal profiles or none found." >&2
@@ -328,7 +287,7 @@ if (dict) {
       echo "Set dark profile to \"$arg_dark\"."
     fi
     echo "Applying updated profile configuration..."
-    exec "$SCRIPT_DIR/lumoshell-apply"
+    exec "$AGENT" --apply
   fi
 
   local current_light current_dark
@@ -396,20 +355,7 @@ EOF
 
   echo "Set light profile to \"$light_profile\" and dark profile to \"$dark_profile\"."
   echo "Applying updated profile configuration..."
-  exec "$SCRIPT_DIR/lumoshell-apply"
-}
-
-validate_apply_args() {
-  local arg
-  for arg in "$@"; do
-    case "$arg" in
-      --dry-run|--verbose|-h|--help) ;;
-      *)
-        echo "lumoshell apply supports only --dry-run and --verbose." >&2
-        exit 1
-        ;;
-    esac
-  done
+  exec "$AGENT" --apply
 }
 
 show_logs() {
@@ -418,22 +364,7 @@ show_logs() {
     exit 1
   fi
 
-  if [[ ! -f "$agent_log_path" ]]; then
-    echo "No logs found at $agent_log_path"
-    exit 0
-  fi
-
-  local cutoff_iso
-  cutoff_iso="$(date -u -v-1H '+%Y-%m-%dT%H:%M:%SZ')"
-  awk -v cutoff="$cutoff_iso" '
-    NF == 0 { next }
-    {
-      ts=$1
-      if (ts >= cutoff) {
-        print $0
-      }
-    }
-  ' "$agent_log_path"
+  log show --predicate 'subsystem == "com.user.lumoshell"' --last 1h --info --debug
 }
 
 cmd="${1:-help}"
@@ -445,8 +376,7 @@ shift
 
 case "$cmd" in
   apply)
-    validate_apply_args "$@"
-    exec "$SCRIPT_DIR/lumoshell-apply" "$@"
+    exec "$AGENT" --apply "$@"
     ;;
   status)
     status "$@"
@@ -462,10 +392,9 @@ case "$cmd" in
     ;;
   doctor)
     echo "lumoshell version: $VERSION"
-    echo "lumoshell-apply: $(command -v lumoshell-apply || true)"
-    echo "lumoshell-appearance-sync-agent: $(command -v lumoshell-appearance-sync-agent || true)"
+    echo "lumoshell-appearance-sync-agent: $AGENT"
     echo "Terminal profile mode detection:"
-    "$SCRIPT_DIR/lumoshell-apply" --dry-run || true
+    "$AGENT" --apply --dry-run || true
     ;;
   version)
     echo "$VERSION"

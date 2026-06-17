@@ -3,3 +3,6 @@ src/appearance-sync-agent/.build/
 dist/
 .omc/
 .cursor/
+.agents
+.commandcode/
+lh-report.json

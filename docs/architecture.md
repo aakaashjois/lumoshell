@@ -18,8 +18,7 @@ Lumoshell is built to keep Terminal theming reliable without manual toggling:
 ## Core Components
 
 - `lumoshell`: user-facing command router
-- `lumoshell-apply`: mode/profile decision + Terminal settings writer
-- `lumoshell-appearance-sync-agent`: event-driven sync daemon (Swift)
+- `lumoshell-appearance-sync-agent`: event-driven sync daemon (Swift) and Terminal settings writer
 - `lumoshell-install` / `lumoshell-uninstall`: LaunchAgent and shell-hook lifecycle scripts
 
 ## High-Level Flow
@@ -27,11 +26,10 @@ Lumoshell is built to keep Terminal theming reliable without manual toggling:
 ```text
 macOS appearance events
   -> lumoshell-appearance-sync-agent
-  -> lumoshell-apply
   -> Terminal defaults + best-effort open-tab update
 
 new shell session (~/.zprofile managed block)
-  -> lumoshell-apply --new-session
+  -> lumoshell-appearance-sync-agent --apply-new-session
 ```
 
 ## Operational Efficiency

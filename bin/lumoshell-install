@@ -5,8 +5,7 @@ set -euo pipefail
 LABEL="com.user.lumoshell-appearance-sync-agent"
 LAUNCH_AGENTS_DIR="${HOME}/Library/LaunchAgents"
 LAUNCH_AGENT_PATH="${LAUNCH_AGENTS_DIR}/${LABEL}.plist"
-LOG_DIR="${HOME}/Library/Logs/lumoshell"
-LOG_PATH="${LOG_DIR}/appearance-sync-agent.log"
+
 HOOK_FILE="${HOME}/.zprofile"
 HOOK_START="# >>> lumoshell managed block >>>"
 HOOK_END="# <<< lumoshell managed block <<<"
@@ -15,11 +14,6 @@ resolve_realpath() {
   local path="$1"
   if command -v realpath >/dev/null 2>&1; then
     realpath "$path"
-    return
-  fi
-
-  if command -v python3 >/dev/null 2>&1; then
-    python3 -c 'import os,sys;print(os.path.realpath(sys.argv[1]))' "$path"
     return
   fi
 
@@ -36,15 +30,6 @@ xml_escape() {
     -e 's/>/\&gt;/g' \
     -e 's/"/\&quot;/g' \
     -e "s/'/\&apos;/g"
-}
-
-# shellcheck disable=SC2016
-shell_double_quote_escape() {
-  printf '%s' "$1" | sed \
-    -e 's/\\/\\\\/g' \
-    -e 's/"/\\"/g' \
-    -e 's/\$/\\$/g' \
-    -e 's/`/\\`/g'
 }
 
 is_world_writable() {
@@ -202,19 +187,13 @@ remove_managed_block() {
   mv "$tmp_hook" "$file"
 }
 
-APPLY_CMD="$(resolve_helper_cmd lumoshell-apply || true)"
 AGENT_CMD="$(resolve_helper_cmd lumoshell-appearance-sync-agent || true)"
 
-require_resolved_command "$APPLY_CMD" "lumoshell-apply"
 require_resolved_command "$AGENT_CMD" "lumoshell-appearance-sync-agent"
 
 mkdir -p "$LAUNCH_AGENTS_DIR"
-mkdir -p "$LOG_DIR"
 
-LOG_PATH_XML="$(xml_escape "$LOG_PATH")"
-APPLY_CMD_HOOK_ESCAPED="$(shell_double_quote_escape "$APPLY_CMD")"
 AGENT_CMD_XML="$(xml_escape "$AGENT_CMD")"
-APPLY_CMD_XML="$(xml_escape "$APPLY_CMD")"
 
 cat > "$LAUNCH_AGENT_PATH" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -226,20 +205,12 @@ cat > "$LAUNCH_AGENT_PATH" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>$AGENT_CMD_XML</string>
-    <string>--apply-cmd</string>
-    <string>$APPLY_CMD_XML</string>
-    <string>--log-file</string>
-    <string>$LOG_PATH_XML</string>
     <string>--quiet</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
-  <key>StandardOutPath</key>
-  <string>$LOG_PATH_XML</string>
-  <key>StandardErrorPath</key>
-  <string>$LOG_PATH_XML</string>
 </dict>
 </plist>
 EOF
@@ -250,16 +221,15 @@ remove_managed_block "$HOOK_FILE"
 
 cat >> "$HOOK_FILE" <<EOF
 $HOOK_START
-if [[ -x "$APPLY_CMD_HOOK_ESCAPED" ]]; then
-  "$APPLY_CMD_HOOK_ESCAPED" --new-session >/dev/null 2>&1 || true
+if [[ -x "$AGENT_CMD" ]]; then
+  "$AGENT_CMD" --apply-new-session >/dev/null 2>&1 || true
 fi
 $HOOK_END
 EOF
 
 launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || true
 launchctl bootstrap "gui/$(id -u)" "$LAUNCH_AGENT_PATH"
-launchctl kickstart -k "gui/$(id -u)/$LABEL"
-"$APPLY_CMD" >/dev/null 2>&1 || true
+"$AGENT_CMD" --apply >/dev/null 2>&1 || true
 
 echo "lumoshell installed."
 echo "If prompted, grant Automation permission for Terminal control."

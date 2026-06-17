@@ -113,7 +113,6 @@ if [[ "$REINSTALL" -eq 1 ]]; then
   TMP_FILES+=("$LOCAL_PAYLOAD_DIR")
   cp "$ROOT_DIR/src/appearance-sync-agent/.build/release/lumoshell-appearance-sync-agent" "$LOCAL_PAYLOAD_DIR/"
   cp "$ROOT_DIR/bin/lumoshell" "$LOCAL_PAYLOAD_DIR/"
-  cp "$ROOT_DIR/bin/lumoshell-apply" "$LOCAL_PAYLOAD_DIR/"
   cp "$ROOT_DIR/bin/lumoshell-install" "$LOCAL_PAYLOAD_DIR/"
   cp "$ROOT_DIR/bin/lumoshell-uninstall" "$LOCAL_PAYLOAD_DIR/"
   chmod +x "$LOCAL_PAYLOAD_DIR"/lumoshell*

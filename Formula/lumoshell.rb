@@ -9,7 +9,6 @@ class Lumoshell < Formula
   def install
     %w[
       lumoshell
-      lumoshell-apply
       lumoshell-install
       lumoshell-uninstall
       lumoshell-appearance-sync-agent
@@ -18,12 +17,8 @@ class Lumoshell < Formula
     end
   end
 
-  def post_install
-    ohai "Run `lumoshell setup` manually to enroll startup and grant permissions."
-  end
-
   service do
-    run [opt_bin/"lumoshell-appearance-sync-agent", "--apply-cmd", opt_bin/"lumoshell-apply", "--quiet"]
+    run [opt_bin/"lumoshell-appearance-sync-agent", "--quiet"]
     keep_alive true
     run_type :immediate
   end
@@ -46,17 +41,11 @@ class Lumoshell < Formula
 
       Set profiles interactively from the CLI:
         lumoshell setup
-
-      Optional env overrides:
-        export LUMOSHELL_PROFILE_LIGHT="Basic"
-        export LUMOSHELL_PROFILE_DARK="Pro"
-
-      Env overrides take precedence over saved profiles from `lumoshell setup`.
     EOS
   end
 
   test do
     assert_match "Usage", shell_output("#{bin}/lumoshell 2>&1", 1)
-    assert_match "mode=", shell_output("#{bin}/lumoshell-apply --dry-run")
+    assert_match "mode=", shell_output("#{bin}/lumoshell apply --dry-run")
   end
 end
