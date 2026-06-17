@@ -52,11 +52,20 @@
             font-family: var(--font-sans);
             background-color: var(--bg-color);
             line-height: 1.6;
-            overflow-x: hidden;
+            overflow: hidden;
+            height: 100dvh;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             margin: 0;
             padding: 0;
+        }
+
+        .page-content-inner {
+            height: 100dvh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
+            width: 100%;
         }
 
         /* Ambient Viewport Background matching Icon */
