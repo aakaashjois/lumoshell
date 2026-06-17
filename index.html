@@ -1050,7 +1050,10 @@
                         syncPause();
                     }
                 });
-            }, { threshold: 0.8 });
+            }, { 
+                root: document.querySelector('.page-content-inner'),
+                threshold: 0.8 
+            });
 
             const topVideoContainer = document.querySelector('.video-container');
             if (topVideoContainer) {
@@ -1059,7 +1062,7 @@
 
             // 2. Setup Intersection Observers
             const observerOptions = {
-                root: null,
+                root: document.querySelector('.page-content-inner'),
                 rootMargin: '0px',
                 threshold: 0.08
             };
@@ -1078,7 +1081,7 @@
 
             // 3. Sequential Nav Assembly
             const navObserverOptions = {
-                root: null,
+                root: document.querySelector('.page-content-inner'),
                 rootMargin: '-80px 0px 0px 0px', // Offset for the nav bar height
                 threshold: 0
             };
