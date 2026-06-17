@@ -48,24 +48,30 @@
             padding: 0;
         }
 
-        body {
-            font-family: var(--font-sans);
-            background-color: var(--bg-color);
-            line-height: 1.6;
+        html, body {
             overflow: hidden;
+            height: 100%;
             height: 100dvh;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            width: 100%;
+            position: fixed;
             margin: 0;
             padding: 0;
         }
 
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
         .page-content-inner {
-            height: 100dvh;
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
             overflow-y: auto;
             overflow-x: hidden;
             -webkit-overflow-scrolling: touch;
-            width: 100%;
         }
 
         /* Ambient Viewport Background matching Icon */
