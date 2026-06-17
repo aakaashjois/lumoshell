@@ -968,28 +968,14 @@
             const termStatus = document.querySelector('.term-status-text');
             
             const updateTheme = (theme) => {
-                // Add smooth transition class temporarily
                 document.body.classList.add('theme-transition');
                 setTimeout(() => document.body.classList.remove('theme-transition'), 500);
 
-                if (theme === 'light') {
-                    document.body.classList.remove('dark-theme');
-                    document.body.classList.add('light-theme');
-                    if(termStatus) termStatus.textContent = 'Light';
-                } else if (theme === 'dark') {
-                    document.body.classList.remove('light-theme');
-                    document.body.classList.add('dark-theme');
-                    if(termStatus) termStatus.textContent = 'Dark';
-                } else {
-                    document.body.classList.remove('light-theme', 'dark-theme');
-                    // Check OS preference
-                    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    if(termStatus) termStatus.textContent = isDark ? 'Dark' : 'Light';
-                }
+                const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.body.classList.toggle('dark-theme', isDark);
+                if (termStatus) termStatus.textContent = isDark ? 'Dark' : 'Light';
 
-                buttons.forEach(b => {
-                    b.classList.toggle('active', b.dataset.theme === theme);
-                });
+                buttons.forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
             };
 
             // Listen for OS changes to update terminal text if auto is selected
@@ -1009,43 +995,23 @@
                 });
             });
 
-            // Setup Video Playback & Intersection Observer
-            const videos = document.querySelectorAll('video');
+            // Setup Video Playback
+            const video = document.querySelector('video');
+            const playIcon = document.querySelector('.play-icon');
+            const pauseIcon = document.querySelector('.pause-icon');
             let isUserVideoPaused = false;
 
-            const updateVideoButtons = (isPlaying) => {
-                document.querySelectorAll('.play-pause-btn').forEach(btn => {
-                    const playIcon = btn.querySelector('.play-icon');
-                    const pauseIcon = btn.querySelector('.pause-icon');
-                    if (playIcon && pauseIcon) {
-                        playIcon.style.display = isPlaying ? 'none' : 'block';
-                        pauseIcon.style.display = isPlaying ? 'block' : 'none';
-                    }
-                });
-            };
+            const syncPlay = () => { if(video) { video.muted = true; video.play().catch(e=>console.log(e)); } if(playIcon) playIcon.style.display='none'; if(pauseIcon) pauseIcon.style.display='block'; };
+            const syncPause = () => { if(video) video.pause(); if(playIcon) playIcon.style.display='block'; if(pauseIcon) pauseIcon.style.display='none'; };
 
-            const syncPlay = () => {
-                videos.forEach(v => { v.muted = true; v.play().catch(e=>console.log(e)); });
-                updateVideoButtons(true);
-            };
-
-            const syncPause = () => {
-                videos.forEach(v => v.pause());
-                updateVideoButtons(false);
-            };
-
-            document.querySelectorAll('.video-container').forEach(container => {
-                container.addEventListener('click', (e) => {
+            const videoContainer = document.querySelector('.video-container');
+            if (videoContainer) {
+                videoContainer.addEventListener('click', (e) => {
                     e.preventDefault();
-                    if (videos[0].paused) {
-                        isUserVideoPaused = false;
-                        syncPlay();
-                    } else {
-                        isUserVideoPaused = true;
-                        syncPause();
-                    }
+                    isUserVideoPaused = !video.paused;
+                    isUserVideoPaused ? syncPause() : syncPlay();
                 });
-            });
+            }
 
             // --- Scroll Tracking for Safari Compatibility ---
             // IntersectionObserver is notoriously buggy on iOS Safari with custom scroll containers (overflow: hidden on body).
@@ -1081,32 +1047,12 @@
                 });
 
                 // 3. Sequential Nav Assembly
-                let isBrandAbove = false;
-                if (heroBrand) {
-                    const bRect = heroBrand.getBoundingClientRect();
-                    // rootMargin: -80px means it triggers when top is < 80px
-                    isBrandAbove = bRect.top < 80;
-                    if (isBrandAbove) {
-                        document.body.classList.add('nav-brand-visible', 'nav-visible');
-                    } else {
-                        document.body.classList.remove('nav-brand-visible');
-                    }
-                }
+                const isBrandAbove = heroBrand && heroBrand.getBoundingClientRect().top < 80;
+                const isToggleAbove = heroToggle && heroToggle.getBoundingClientRect().top < 80;
 
-                let isToggleAbove = false;
-                if (heroToggle) {
-                    const tRect = heroToggle.getBoundingClientRect();
-                    isToggleAbove = tRect.top < 80;
-                    if (isToggleAbove) {
-                        document.body.classList.add('nav-toggle-visible');
-                    } else {
-                        document.body.classList.remove('nav-toggle-visible');
-                    }
-                }
-
-                if (!isBrandAbove && !isToggleAbove) {
-                    document.body.classList.remove('nav-visible');
-                }
+                document.body.classList.toggle('nav-brand-visible', isBrandAbove);
+                document.body.classList.toggle('nav-toggle-visible', isToggleAbove);
+                document.body.classList.toggle('nav-visible', isBrandAbove || isToggleAbove);
             }
 
             if (scrollContainer) {
