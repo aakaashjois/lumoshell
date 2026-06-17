@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="color-scheme" content="light dark">
     <title>Lumoshell — Apple Terminal Appearance Switcher</title>
     <meta name="description" content="Lumoshell effortlessly bridges the gap between your system's appearance and Apple Terminal, keeping your active sessions perfectly in sync with macOS light and dark modes.">
     
@@ -18,18 +19,19 @@
         /* CSS Resets & Variables */
         :root {
             --bg-color: #FDFBFB;
-            --text-primary: #111111;
-            --text-secondary: #555555;
-            --border-color: #EAEAEA;
-            --card-bg: #FFFFFF;
+            --text-primary: #1C1C1E;
+            --text-secondary: #8E8E93;
+            --border-color: rgba(0, 0, 0, 0.08);
+            --card-bg: rgba(255, 255, 255, 0.6);
             
             /* Typography Architecture */
             --font-sans: 'SF Pro Display', 'Geist Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
             --font-serif: 'Lyon Text', 'Newsreader', 'Playfair Display', 'Instrument Serif', serif;
-            --font-mono: 'Geist Mono', 'SF Mono', 'JetBrains Mono', monospace;
+            --font-mono: 'SF Mono', 'Geist Mono', Menlo, Monaco, Consolas, monospace;
             
             /* Motion Dynamics */
-            --ease-custom: cubic-bezier(0.32, 0.72, 0, 1);
+            --ease-custom: cubic-bezier(0.25, 1, 0.5, 1);
+            color-scheme: light dark;
         }
 
         .dark-theme {
@@ -46,30 +48,45 @@
             padding: 0;
         }
 
-        body {
-            font-family: var(--font-sans);
-            background-color: #FBFBFA; /* fallback */
-            line-height: 1.6;
-            overflow-x: hidden;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+        html, body {
+            overflow: hidden;
+            height: 100%;
+            height: 100dvh;
+            width: 100%;
+            position: fixed;
             margin: 0;
             padding: 0;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--bg-color);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .page-content-inner {
+            position: absolute;
+            top: 0; bottom: 0; left: 0; right: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
         }
 
         /* Ambient Viewport Background matching Icon */
         body::before {
             content: '';
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: linear-gradient(135deg, #FDFBFB 0%, #E2E2E2 100%);
+            top: -200px; left: 0; right: 0; bottom: -200px;
+            background: linear-gradient(135deg, #FDFBFB 10%, #E2E2E2 90%);
             pointer-events: none;
             z-index: -1;
             transition: background 0.5s var(--ease-custom);
         }
 
         .dark-theme::before {
-            background: linear-gradient(135deg, #2C3E50 0%, #000000 100%);
+            background: linear-gradient(135deg, #2C3E50 10%, #000000 90%);
         }
 
         /* Typography */
@@ -181,30 +198,34 @@
         }
         
         .theme-btn {
-            display: inline-flex;
+            display: flex;
             align-items: center;
-            justify-content: center;
-            gap: 0.35rem;
-            background: transparent;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
             border: none;
-            border-radius: 9999px;
-            padding: 0.4rem 0.75rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            font-family: var(--font-sans);
+            background: transparent;
             color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s var(--ease-custom);
         }
-        
-        .theme-btn:hover {
+
+        .theme-btn.active {
+            background: var(--card-bg);
             color: var(--text-primary);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .theme-btn svg {
+            opacity: 0.7;
         }
         
-        .theme-btn.active {
-            background: var(--text-primary);
-            color: var(--bg-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        @media (max-width: 600px) {
+            .theme-text { display: none; }
+            .theme-btn { padding: 0.5rem; }
         }
 
         .dark-theme .theme-btn.active {
@@ -254,6 +275,9 @@
             border: 1px solid var(--border-color);
             transition: transform 0.4s var(--ease-custom), box-shadow 0.4s var(--ease-custom);
             height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
 
         .dark-theme .double-bezel { background: rgba(255, 255, 255, 0.02); }
@@ -278,6 +302,8 @@
             flex-direction: column;
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
+            flex: 1;
+            min-width: 0;
         }
 
         .dark-theme .double-bezel-inner { 
@@ -355,6 +381,17 @@
             .double-bezel:hover {
                 transform: none;
                 box-shadow: none;
+            }
+            .bento-opensource {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 2rem !important;
+                gap: 1.5rem;
+            }
+            .bento-opensource .btn {
+                margin-left: 0 !important;
+                width: 100%;
+                justify-content: center;
             }
         }
 
@@ -503,6 +540,15 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+        }
+
+        .bento-opensource {
+            padding: 3rem;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: space-between;
+            gap: 2rem;
         }
 
         .hero-brand-container {
@@ -659,18 +705,18 @@
             </div>
             
             <div class="nav-theme-toggle">
-                <div class="theme-toggle" aria-label="Theme Toggle">
-                    <button class="theme-btn" data-theme="light" aria-label="Light Theme">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                        <span>Light</span>
+                <div class="theme-toggle" role="radiogroup" aria-label="Theme selection">
+                    <button class="theme-btn active" data-theme="light">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <span class="theme-text">Light</span>
                     </button>
-                    <button class="theme-btn active" data-theme="auto" aria-label="Auto Theme">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                        <span>Auto</span>
+                    <button class="theme-btn" data-theme="auto">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        <span class="theme-text">Auto</span>
                     </button>
-                    <button class="theme-btn" data-theme="dark" aria-label="Dark Theme">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                        <span>Dark</span>
+                    <button class="theme-btn" data-theme="dark">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                        <span class="theme-text">Dark</span>
                     </button>
                 </div>
             </div>
@@ -837,27 +883,26 @@
                     </div>
 
                     <!-- Bento Item 3 -->
-                    <div class="bento-item reveal delay-100" style="grid-column: span 12;">
+                    <div class="bento-item small reveal delay-100">
                         <div class="double-bezel">
-                            <div class="double-bezel-inner" style="padding: 4rem; position: relative; overflow: hidden; display: flex; flex-direction: row; align-items: center;">
-                                <div style="position: relative; z-index: 2; max-width: 50%;">
-                                    <div class="badge" style="background: rgba(120, 119, 116, 0.1); color: #787774;">Ecosystem</div>
-                                    <h3 style="margin-bottom: 0.75rem; font-size: 2.5rem; font-weight: 700;">Native Feel</h3>
-                                    <p style="color: var(--text-secondary); font-size: 1.1rem;">Designed exclusively for Apple Terminal and macOS, providing a first-class citizen experience that feels like it was built by Apple.</p>
-                                </div>
-                                <img src="assets/icon.svg" class="bento-icon" alt="" style="position: absolute; right: -50px; width: 350px; height: 350px; transform: rotate(-12deg); opacity: 0.8; z-index: 1; filter: drop-shadow(0 20px 40px rgba(0,0,0,0.15)); transition: transform 0.8s var(--ease-custom);">
+                            <div class="double-bezel-inner" style="padding: 3rem;">
+                                <div class="badge" style="background: rgba(120, 119, 116, 0.1); color: #787774;">Ecosystem</div>
+                                <h3 style="margin-bottom: 0.75rem; font-size: 1.75rem; font-weight: 700;">Native Feel</h3>
+                                <p style="color: var(--text-secondary); font-size: 1.1rem;">Designed exclusively for Apple Terminal and macOS, providing a first-class citizen experience.</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- Bento Item 4 -->
-                    <div class="bento-item reveal delay-200" style="grid-column: span 12;">
+                    <div class="bento-item large reveal delay-200">
                         <div class="double-bezel">
-                            <div class="double-bezel-inner" style="padding: 3rem; display: flex; align-items: center; gap: 2rem; flex-wrap: wrap;">
-                                <div class="badge" style="background: rgba(39, 201, 63, 0.1); color: #27C93F; margin-bottom: 0;">Open Source</div>
-                                <div>
-                                    <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">MIT License</h3>
-                                    <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0;">Completely open source and free forever. Contributions welcome.</p>
+                            <div class="double-bezel-inner bento-opensource">
+                                <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; flex: 1;">
+                                    <div class="badge" style="background: rgba(39, 201, 63, 0.1); color: #27C93F; margin-bottom: 0;">Open Source</div>
+                                    <div>
+                                        <h3 style="font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem;">MIT License</h3>
+                                        <p style="color: var(--text-secondary); font-size: 1.1rem; margin-bottom: 0;">Completely open source and free forever. Contributions welcome.</p>
+                                    </div>
                                 </div>
                                 <a href="https://github.com/aakaashjois/lumoshell" class="btn" style="padding: 0.75rem 1.5rem; font-size: 1rem; margin-left: auto;">View on GitHub</a>
                             </div>
@@ -890,28 +935,14 @@
             const termStatus = document.querySelector('.term-status-text');
             
             const updateTheme = (theme) => {
-                // Add smooth transition class temporarily
                 document.body.classList.add('theme-transition');
                 setTimeout(() => document.body.classList.remove('theme-transition'), 500);
 
-                if (theme === 'light') {
-                    document.body.classList.remove('dark-theme');
-                    document.body.classList.add('light-theme');
-                    if(termStatus) termStatus.textContent = 'Light';
-                } else if (theme === 'dark') {
-                    document.body.classList.remove('light-theme');
-                    document.body.classList.add('dark-theme');
-                    if(termStatus) termStatus.textContent = 'Dark';
-                } else {
-                    document.body.classList.remove('light-theme', 'dark-theme');
-                    // Check OS preference
-                    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                    if(termStatus) termStatus.textContent = isDark ? 'Dark' : 'Light';
-                }
+                const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+                document.body.classList.toggle('dark-theme', isDark);
+                if (termStatus) termStatus.textContent = isDark ? 'Dark' : 'Light';
 
-                buttons.forEach(b => {
-                    b.classList.toggle('active', b.dataset.theme === theme);
-                });
+                buttons.forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
             };
 
             // Listen for OS changes to update terminal text if auto is selected
@@ -931,114 +962,72 @@
                 });
             });
 
-            // Setup Video Playback & Intersection Observer
-            const videos = document.querySelectorAll('video');
+            // Setup Video Playback
+            const video = document.querySelector('video');
+            const playIcon = document.querySelector('.play-icon');
+            const pauseIcon = document.querySelector('.pause-icon');
             let isUserVideoPaused = false;
 
-            const updateVideoButtons = (isPlaying) => {
-                document.querySelectorAll('.play-pause-btn').forEach(btn => {
-                    const playIcon = btn.querySelector('.play-icon');
-                    const pauseIcon = btn.querySelector('.pause-icon');
-                    if (playIcon && pauseIcon) {
-                        playIcon.style.display = isPlaying ? 'none' : 'block';
-                        pauseIcon.style.display = isPlaying ? 'block' : 'none';
-                    }
-                });
-            };
+            const syncPlay = () => { if(video) { video.muted = true; video.play().catch(e=>console.log(e)); } if(playIcon) playIcon.style.display='none'; if(pauseIcon) pauseIcon.style.display='block'; };
+            const syncPause = () => { if(video) video.pause(); if(playIcon) playIcon.style.display='block'; if(pauseIcon) pauseIcon.style.display='none'; };
 
-            const syncPlay = () => {
-                videos.forEach(v => { v.muted = true; v.play().catch(e=>console.log(e)); });
-                updateVideoButtons(true);
-            };
-
-            const syncPause = () => {
-                videos.forEach(v => v.pause());
-                updateVideoButtons(false);
-            };
-
-            document.querySelectorAll('.video-container').forEach(container => {
-                container.addEventListener('click', (e) => {
+            const videoContainer = document.querySelector('.video-container');
+            if (videoContainer) {
+                videoContainer.addEventListener('click', (e) => {
                     e.preventDefault();
-                    if (videos[0].paused) {
-                        isUserVideoPaused = false;
-                        syncPlay();
-                    } else {
-                        isUserVideoPaused = true;
-                        syncPause();
-                    }
+                    isUserVideoPaused = !video.paused;
+                    isUserVideoPaused ? syncPause() : syncPlay();
                 });
-            });
-
-            const videoObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        if (!isUserVideoPaused) syncPlay();
-                    } else {
-                        // Pause when out of view, but don't set userPaused state
-                        syncPause();
-                    }
-                });
-            }, { threshold: 0.8 });
-
-            const topVideoContainer = document.querySelector('.video-container');
-            if (topVideoContainer) {
-                videoObserver.observe(topVideoContainer);
             }
 
-            // 2. Setup Intersection Observers
-            const observerOptions = {
-                root: null,
-                rootMargin: '0px',
-                threshold: 0.08
-            };
-
-            const observer = new IntersectionObserver((entries, observer) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        entry.target.classList.add('visible');
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, observerOptions);
-
-            // Observe elements in both layers
-            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-
-            // 3. Sequential Nav Assembly
-            const navObserverOptions = {
-                root: null,
-                rootMargin: '-80px 0px 0px 0px', // Offset for the nav bar height
-                threshold: 0
-            };
-            
-            const navAssemblyObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    const isAboveViewport = !entry.isIntersecting && entry.boundingClientRect.top < 100;
-                    
-                    if (entry.target.classList.contains('hero-brand-container')) {
-                        if (isAboveViewport) {
-                            document.body.classList.add('nav-brand-visible', 'nav-visible');
-                        } else {
-                            document.body.classList.remove('nav-brand-visible');
-                            if (!document.body.classList.contains('nav-toggle-visible')) {
-                                document.body.classList.remove('nav-visible');
-                            }
-                        }
-                    }
-                    if (entry.target.classList.contains('hero-theme-toggle-container')) {
-                        if (isAboveViewport) {
-                            document.body.classList.add('nav-toggle-visible');
-                        } else {
-                            document.body.classList.remove('nav-toggle-visible');
-                        }
-                    }
-                });
-            }, navObserverOptions);
-
+            // --- Scroll Tracking for Safari Compatibility ---
+            // IntersectionObserver is notoriously buggy on iOS Safari with custom scroll containers (overflow: hidden on body).
+            // We use a robust, high-performance scroll listener on the inner container instead.
+            const scrollContainer = document.querySelector('.page-content-inner');
+            const revealElements = document.querySelectorAll('.reveal');
+            const topVideoContainer = document.querySelector('.video-container');
             const heroBrand = document.querySelector('.hero-brand-container');
             const heroToggle = document.querySelector('.hero-theme-toggle-container');
-            if (heroBrand) navAssemblyObserver.observe(heroBrand);
-            if (heroToggle) navAssemblyObserver.observe(heroToggle);
+
+            function handleScrollTracking() {
+                const windowHeight = window.innerHeight;
+
+                // 1. Video Autoplay Tracking (threshold ~0.8 -> 20% visible margin)
+                if (topVideoContainer) {
+                    const vRect = topVideoContainer.getBoundingClientRect();
+                    const isIntersecting = vRect.top < windowHeight * 0.8 && vRect.bottom > windowHeight * 0.2;
+                    if (isIntersecting) {
+                        if (!isUserVideoPaused) syncPlay();
+                    } else {
+                        syncPause();
+                    }
+                }
+
+                // 2. Reveal Animations (threshold ~0.08 -> slightly above bottom)
+                revealElements.forEach(el => {
+                    if (!el.classList.contains('visible')) {
+                        const rRect = el.getBoundingClientRect();
+                        if (rRect.top <= windowHeight - 50) {
+                            el.classList.add('visible');
+                        }
+                    }
+                });
+
+                // 3. Sequential Nav Assembly
+                const isBrandAbove = heroBrand && heroBrand.getBoundingClientRect().top < 80;
+                const isToggleAbove = heroToggle && heroToggle.getBoundingClientRect().top < 80;
+
+                document.body.classList.toggle('nav-brand-visible', isBrandAbove);
+                document.body.classList.toggle('nav-toggle-visible', isToggleAbove);
+                document.body.classList.toggle('nav-visible', isBrandAbove || isToggleAbove);
+            }
+
+            if (scrollContainer) {
+                // Initial check on load
+                handleScrollTracking();
+                // Check on scroll
+                scrollContainer.addEventListener('scroll', handleScrollTracking, { passive: true });
+            }
         });
     </script>
 </body>
