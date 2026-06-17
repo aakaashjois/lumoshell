@@ -25,7 +25,7 @@ jobs:
       - name: Audit Homebrew formula
         run: |
           TAP_NAME="local/lumoshell-ci"
-          if ! brew tap | rg -q "^${TAP_NAME}$"; then
+          if ! brew tap | grep -q "^${TAP_NAME}$"; then
             brew tap-new "$TAP_NAME"
           fi
           TAP_REPO="$(brew --repository "$TAP_NAME")"
