@@ -18,7 +18,7 @@ extension String {
 }
 
 func isDarkAppearance() -> Bool {
-    return UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+    return NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
 }
 
 final class ApplyRunner {
@@ -155,7 +155,7 @@ final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
     private let applyRunner: ApplyRunner
     private let logger: Logger
     private var lastIsDark: Bool?
-    private var themeObserver: NSObjectProtocol?
+    private var appearanceObservation: NSKeyValueObservation?
 
     init(config: Config) {
         self.logger = Logger(subsystem: "com.user.lumoshell", category: "agent")
@@ -167,13 +167,8 @@ final class AppearanceSyncAgent: NSObject, NSApplicationDelegate {
         logger.info("appearance sync agent started")
         trackAndApply(trigger: "startup", force: true)
 
-        let themeNotification = Notification.Name("AppleInterfaceThemeChangedNotification")
-        themeObserver = DistributedNotificationCenter.default().addObserver(
-            forName: themeNotification,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.trackAndApply(trigger: "AppleInterfaceThemeChangedNotification", force: false)
+        appearanceObservation = NSApplication.shared.observe(\.effectiveAppearance, options: [.new]) { [weak self] _, _ in
+            self?.trackAndApply(trigger: "effectiveAppearance", force: false)
         }
     }
 

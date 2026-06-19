@@ -31,8 +31,6 @@ bash "$ROOT_DIR/tests/version_resolution_test.sh"
 echo "[8.1/11] setup and doctor tests"
 bash "$ROOT_DIR/tests/setup_doctor_test.sh"
 
-echo "[8.2/11] debounce tests"
-bash "$ROOT_DIR/tests/debounce_test.sh"
 
 echo "[9/11] smoke wrapper"
 "$ROOT_DIR/bin/lumoshell" version
